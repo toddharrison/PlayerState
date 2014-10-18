@@ -1,0 +1,4 @@
+main-class=com.eharrison.canary.playerstate.PlayerStatePlugin
+author=Rusli
+version=0.0.1-SNAPSHOT
+name=PlayerState
