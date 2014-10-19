@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.StringTokenizer;
 
 import net.canarymod.Canary;
+import net.canarymod.api.GameMode;
 import net.canarymod.api.entity.living.humanoid.Player;
 import net.canarymod.api.factory.ItemFactory;
 import net.canarymod.api.factory.NBTFactory;
@@ -52,8 +53,9 @@ public class PlayerStateManager {
 		playerDao.update();
 	}
 	
-	public void changePlayerState(final Player player, final String state)
+	public boolean loadPlayerState(final Player player, final String state)
 			throws DatabaseReadException {
+		boolean loaded = false;
 		final PlayerDao playerDao = PlayerDao.getPlayerDao(player, state);
 		if (playerDao != null) {
 			player.setAge(playerDao.age);
@@ -66,7 +68,7 @@ public class PlayerStateManager {
 			player.setHunger(playerDao.hunger);
 			// player.setInvulnerabilityTicks(invunerable);
 			// player.setLevel(level);
-			player.teleportTo(Location.fromString(playerDao.location));
+			// player.teleportTo(Location.fromString(playerDao.location));
 			player.setMaxHealth(playerDao.maxHealth);
 			player.setModeId(playerDao.gameMode);
 			player.setPrefix(playerDao.prefix);
@@ -75,7 +77,27 @@ public class PlayerStateManager {
 			restoreInventory(playerDao.enderInventory, player.getEnderChestInventory());
 			restoreInventory(playerDao.inventory, player.getInventory());
 			restoreEquipment(playerDao.equipment, player.getInventory());
+			
+			loaded = true;
 		}
+		return loaded;
+	}
+	
+	public void clearPlayerState(final Player player) {
+		// TODO allow configuration of what the starting player state is
+		player.setAge(0);
+		player.removeAllPotionEffects();
+		player.setExhaustion(0);
+		player.setExperience(0);
+		player.setHealth(20);
+		player.setHome(player.getLocation());
+		player.setHunger(20);
+		player.setMaxHealth(20);
+		player.setMode(GameMode.SURVIVAL);
+		player.setPrefix(null);
+		player.setSpawnPosition(player.getLocation());
+		player.getEnderChestInventory().clearContents();
+		player.getInventory().clearContents();
 	}
 	
 	private List<String> serializePotionEffects(final List<PotionEffect> effects) {

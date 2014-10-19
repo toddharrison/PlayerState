@@ -109,6 +109,7 @@ public class PlayerDao extends DataAccess {
 	public void update() throws DatabaseWriteException {
 		final Map<String, Object> filters = new HashMap<String, Object>();
 		filters.put(PlayerDao.UUID, uuid);
+		filters.put(PlayerDao.STATE, state);
 		Database.get().update(this, filters);
 	}
 }

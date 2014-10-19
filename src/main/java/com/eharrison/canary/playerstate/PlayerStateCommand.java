@@ -59,7 +59,7 @@ public class PlayerStateCommand implements CommandListener {
 		}
 		if (player != null) {
 			final String state = parameters[1];
-			manager.changePlayerState(player, state);
+			manager.loadPlayerState(player, state);
 			caller.message("Changed " + player.getDisplayName() + " current state to " + state);
 		}
 	}
