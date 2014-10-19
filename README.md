@@ -10,6 +10,8 @@ PlayerState is a [canarymod](http://www.canarymod.net/) 1.1.3-SNAPSHOT plugin de
 * Inventories in Ender chest and player inventory
 * Equipment
 * Prefix
+* Statistics
+* Achievements
 * And more...
 
 PlayerState will also automatically save and load the state of a player as they transition between worlds if __automate__ is set to __true__ in the PlayerState.cfg. The data for all player states is stored in the canary _playerstate_player_ table.
