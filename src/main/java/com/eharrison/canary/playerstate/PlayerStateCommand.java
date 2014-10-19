@@ -47,7 +47,7 @@ public class PlayerStateCommand implements CommandListener {
 	@Command(aliases = {
 		"load"
 	}, parent = "playerstate", description = "Load player state", permissions = {
-		"playerstate.command.restore"
+		"playerstate.command.load"
 	}, toolTip = "/playerstate <load> <name> [player]", min = 2, max = 3)
 	public void changeCommand(final MessageReceiver caller, final String[] parameters)
 			throws DatabaseReadException {
