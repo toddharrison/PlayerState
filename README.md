@@ -1,8 +1,6 @@
 PlayerState
 ===========
-v0.0.2
-
-__Now with Java 1.6 support!__
+v0.0.3
 
 PlayerState is a [canarymod](http://www.canarymod.net/) 1.1.3-SNAPSHOT plugin designed to save and load player state. This includes:
 
