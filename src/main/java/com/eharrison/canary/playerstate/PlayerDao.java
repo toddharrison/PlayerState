@@ -30,6 +30,8 @@ public class PlayerDao extends DataAccess {
 	public static final String ENDER_INVENTORY = "ender_inventory";
 	public static final String INVENTORY = "inventory";
 	public static final String EQUIPMENT = "equipment";
+	public static final String ACHIEVEMENTS = "achievements";
+	public static final String STATISTICS = "statistics";
 	
 	public static PlayerDao getPlayerDao(final Player player, final String state)
 			throws DatabaseReadException {
@@ -105,6 +107,12 @@ public class PlayerDao extends DataAccess {
 	
 	@Column(columnName = EQUIPMENT, dataType = DataType.STRING, isList = true)
 	public List<String> equipment;
+	
+	@Column(columnName = ACHIEVEMENTS, dataType = DataType.STRING)
+	public String achievements;
+	
+	@Column(columnName = STATISTICS, dataType = DataType.STRING)
+	public String statistics;
 	
 	public void update() throws DatabaseWriteException {
 		final Map<String, Object> filters = new HashMap<String, Object>();

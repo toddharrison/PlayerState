@@ -10,12 +10,17 @@ import net.canarymod.api.entity.living.humanoid.Player;
 import net.canarymod.api.factory.ItemFactory;
 import net.canarymod.api.factory.NBTFactory;
 import net.canarymod.api.factory.PotionFactory;
+import net.canarymod.api.factory.StatisticsFactory;
 import net.canarymod.api.inventory.Inventory;
 import net.canarymod.api.inventory.Item;
 import net.canarymod.api.inventory.ItemType;
 import net.canarymod.api.inventory.PlayerInventory;
 import net.canarymod.api.nbt.CompoundTag;
 import net.canarymod.api.potion.PotionEffect;
+import net.canarymod.api.statistics.Achievement;
+import net.canarymod.api.statistics.Achievements;
+import net.canarymod.api.statistics.Stat;
+import net.canarymod.api.statistics.Statistics;
 import net.canarymod.api.world.position.Location;
 import net.canarymod.database.exceptions.DatabaseReadException;
 import net.canarymod.database.exceptions.DatabaseWriteException;
@@ -24,6 +29,7 @@ public class PlayerStateManager {
 	private static final PotionFactory POTION_FACTORY = Canary.factory().getPotionFactory();
 	private static final ItemFactory ITEM_FACTORY = Canary.factory().getItemFactory();
 	private static final NBTFactory NBT_FACTORY = Canary.factory().getNBTFactory();
+	private static final StatisticsFactory STATS_FACTORY = Canary.factory().getStatisticsFactory();
 	
 	public void savePlayerState(final Player player, final String state)
 			throws DatabaseWriteException {
@@ -50,6 +56,10 @@ public class PlayerStateManager {
 		playerDao.enderInventory = serializeInventory(player.getEnderChestInventory());
 		playerDao.inventory = serializeInventory(player.getInventory());
 		playerDao.equipment = serializeEquipment(player.getInventory());
+		
+		playerDao.achievements = serializeAchievements(player);
+		playerDao.statistics = serializeStatistics(player);
+		
 		playerDao.update();
 	}
 	
@@ -78,6 +88,9 @@ public class PlayerStateManager {
 			restoreInventory(playerDao.inventory, player.getInventory());
 			restoreEquipment(playerDao.equipment, player.getInventory());
 			
+			restoreAchievements(playerDao.achievements, player);
+			restoreStatistics(playerDao.statistics, player);
+			
 			loaded = true;
 		}
 		return loaded;
@@ -98,6 +111,26 @@ public class PlayerStateManager {
 		player.setSpawnPosition(player.getLocation());
 		player.getEnderChestInventory().clearContents();
 		player.getInventory().clearContents();
+		
+		for (final Achievements achievements : Achievements.values()) {
+			// TODO: get bug fixed in canarymod
+			if (achievements == Achievements.OVERPOWERED || achievements == Achievements.ADVENTURINGTIME
+					|| achievements == Achievements.BEACONATOR) {
+				continue;
+			}
+			
+			player.setStat(achievements.getInstance(), 0);
+		}
+		for (final Statistics statistics : Statistics.values()) {
+			// TODO: get bug fixed in canarymod
+			if (statistics == Statistics.TIMESINCEDEATH || statistics == Statistics.CROUCHONECM
+					|| statistics == Statistics.SPRINTONECM || statistics == Statistics.TALKEDTOVILLAGER
+					|| statistics == Statistics.TRADEDWITHVILLAGER) {
+				continue;
+			}
+			
+			player.setStat(statistics.getInstance(), 0);
+		}
 	}
 	
 	private List<String> serializePotionEffects(final List<PotionEffect> effects) {
@@ -169,6 +202,83 @@ public class PlayerStateManager {
 		inventory.setChestPlateSlot(dejsonify(list.get(1)));
 		inventory.setHelmetSlot(dejsonify(list.get(2)));
 		inventory.setLeggingsSlot(dejsonify(list.get(3)));
+	}
+	
+	private String serializeAchievements(final Player player) {
+		final StringBuilder sb = new StringBuilder();
+		for (final Achievements achievements : Achievements.values()) {
+			// TODO: get bug fixed in canarymod
+			if (achievements == Achievements.OVERPOWERED || achievements == Achievements.ADVENTURINGTIME
+					|| achievements == Achievements.BEACONATOR) {
+				continue;
+			}
+			
+			sb.append(achievements.getNativeName());
+			sb.append("=");
+			sb.append(player.getStat(achievements.getInstance()));
+			sb.append(";");
+		}
+		return sb.toString();
+	}
+	
+	private String serializeStatistics(final Player player) {
+		final StringBuilder sb = new StringBuilder();
+		for (final Statistics statistics : Statistics.values()) {
+			// TODO: get bug fixed in canarymod
+			if (statistics == Statistics.TIMESINCEDEATH || statistics == Statistics.CROUCHONECM
+					|| statistics == Statistics.SPRINTONECM || statistics == Statistics.TALKEDTOVILLAGER
+					|| statistics == Statistics.TRADEDWITHVILLAGER) {
+				continue;
+			}
+			
+			sb.append(statistics.getNativeName());
+			sb.append("=");
+			sb.append(player.getStat(statistics.getInstance()));
+			sb.append(";");
+		}
+		return sb.toString();
+	}
+	
+	private void restoreAchievements(final String achievements, final Player player) {
+		final StringTokenizer st = new StringTokenizer(achievements, ";");
+		while (st.hasMoreTokens()) {
+			final String t = st.nextToken();
+			final int i = t.indexOf("=");
+			final int j = t.indexOf(".");
+			
+			// TODO bug in canary
+			final String achievementName = t.substring(j + 1, i);
+			try {
+				final Achievements as = Achievements.forNMSName(achievementName);
+				PlayerStatePlugin.logger.info("Value of as: " + as);
+				final Achievement a = as.getInstance();
+				player.setStat(a, Integer.parseInt(t.substring(i + 1)));
+			} catch (final NullPointerException e) {
+				PlayerStatePlugin.logger.info("TEST achievement: " + achievementName);
+				throw e;
+			}
+		}
+	}
+	
+	private void restoreStatistics(final String statistics, final Player player) {
+		final StringTokenizer st = new StringTokenizer(statistics, ";");
+		while (st.hasMoreTokens()) {
+			final String t = st.nextToken();
+			final int i = t.indexOf("=");
+			final int j = t.indexOf(".");
+			
+			// TODO bug in canary
+			final String statName = t.substring(j + 1, i);
+			try {
+				final Statistics ss = Statistics.forNMSName(statName);
+				PlayerStatePlugin.logger.info("Value of ss: " + ss);
+				final Stat s = ss.getInstance();
+				player.setStat(s, Integer.parseInt(t.substring(i + 1)));
+			} catch (final NullPointerException e) {
+				PlayerStatePlugin.logger.info("TEST statistic: " + statName);
+				throw e;
+			}
+		}
 	}
 	
 	private String jsonify(final Item item) {
