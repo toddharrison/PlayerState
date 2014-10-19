@@ -244,19 +244,10 @@ public class PlayerStateManager {
 		while (st.hasMoreTokens()) {
 			final String t = st.nextToken();
 			final int i = t.indexOf("=");
-			final int j = t.indexOf(".");
 			
-			// TODO bug in canary
-			final String achievementName = t.substring(j + 1, i);
-			try {
-				final Achievements as = Achievements.forNMSName(achievementName);
-				PlayerStatePlugin.logger.info("Value of as: " + as);
-				final Achievement a = as.getInstance();
-				player.setStat(a, Integer.parseInt(t.substring(i + 1)));
-			} catch (final NullPointerException e) {
-				PlayerStatePlugin.logger.info("TEST achievement: " + achievementName);
-				throw e;
-			}
+			final String achievementName = t.substring(0, i);
+			final Achievement a = STATS_FACTORY.getAchievement(achievementName);
+			player.setStat(a, Integer.parseInt(t.substring(i + 1)));
 		}
 	}
 	
@@ -265,19 +256,10 @@ public class PlayerStateManager {
 		while (st.hasMoreTokens()) {
 			final String t = st.nextToken();
 			final int i = t.indexOf("=");
-			final int j = t.indexOf(".");
 			
-			// TODO bug in canary
-			final String statName = t.substring(j + 1, i);
-			try {
-				final Statistics ss = Statistics.forNMSName(statName);
-				PlayerStatePlugin.logger.info("Value of ss: " + ss);
-				final Stat s = ss.getInstance();
-				player.setStat(s, Integer.parseInt(t.substring(i + 1)));
-			} catch (final NullPointerException e) {
-				PlayerStatePlugin.logger.info("TEST statistic: " + statName);
-				throw e;
-			}
+			final String statName = t.substring(0, i);
+			final Stat s = STATS_FACTORY.getStat(statName);
+			player.setStat(s, Integer.parseInt(t.substring(i + 1)));
 		}
 	}
 	
