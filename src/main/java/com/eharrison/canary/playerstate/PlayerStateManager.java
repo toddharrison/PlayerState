@@ -210,13 +210,13 @@ public class PlayerStateManager {
 			// TODO: get bug fixed in canarymod
 			if (achievements == Achievements.OVERPOWERED || achievements == Achievements.ADVENTURINGTIME
 					|| achievements == Achievements.BEACONATOR) {
-				continue;
+				// continue; // Causes a concurrent operation exception?!?
+			} else {
+				sb.append(achievements.getNativeName());
+				sb.append("=");
+				sb.append(player.getStat(achievements.getInstance()));
+				sb.append(";");
 			}
-			
-			sb.append(achievements.getNativeName());
-			sb.append("=");
-			sb.append(player.getStat(achievements.getInstance()));
-			sb.append(";");
 		}
 		return sb.toString();
 	}
@@ -228,13 +228,13 @@ public class PlayerStateManager {
 			if (statistics == Statistics.TIMESINCEDEATH || statistics == Statistics.CROUCHONECM
 					|| statistics == Statistics.SPRINTONECM || statistics == Statistics.TALKEDTOVILLAGER
 					|| statistics == Statistics.TRADEDWITHVILLAGER) {
-				continue;
+				// continue; // Causes a concurrent operation exception?!?
+			} else {
+				sb.append(statistics.getNativeName());
+				sb.append("=");
+				sb.append(player.getStat(statistics.getInstance()));
+				sb.append(";");
 			}
-			
-			sb.append(statistics.getNativeName());
-			sb.append("=");
-			sb.append(player.getStat(statistics.getInstance()));
-			sb.append(";");
 		}
 		return sb.toString();
 	}
