@@ -120,22 +120,9 @@ public class PlayerStateManager {
 		pi.setLeggingsSlot(null);
 		
 		for (final Achievements achievements : Achievements.values()) {
-			// TODO: get bug fixed in canarymod
-			if (achievements == Achievements.OVERPOWERED || achievements == Achievements.ADVENTURINGTIME
-					|| achievements == Achievements.BEACONATOR) {
-				continue;
-			}
-			
 			player.setStat(achievements.getInstance(), 0);
 		}
 		for (final Statistics statistics : Statistics.values()) {
-			// TODO: get bug fixed in canarymod
-			if (statistics == Statistics.TIMESINCEDEATH || statistics == Statistics.CROUCHONECM
-					|| statistics == Statistics.SPRINTONECM || statistics == Statistics.TALKEDTOVILLAGER
-					|| statistics == Statistics.TRADEDWITHVILLAGER) {
-				continue;
-			}
-			
 			player.setStat(statistics.getInstance(), 0);
 		}
 	}
@@ -214,16 +201,10 @@ public class PlayerStateManager {
 	private String serializeAchievements(final Player player) {
 		final StringBuilder sb = new StringBuilder();
 		for (final Achievements achievements : Achievements.values()) {
-			// TODO: get bug fixed in canarymod
-			if (achievements == Achievements.OVERPOWERED || achievements == Achievements.ADVENTURINGTIME
-					|| achievements == Achievements.BEACONATOR) {
-				// continue; // Causes a concurrent operation exception?!?
-			} else {
-				sb.append(achievements.getNativeName());
-				sb.append("=");
-				sb.append(player.getStat(achievements.getInstance()));
-				sb.append(";");
-			}
+			sb.append(achievements.getNativeName());
+			sb.append("=");
+			sb.append(player.getStat(achievements.getInstance()));
+			sb.append(";");
 		}
 		return sb.toString();
 	}
@@ -231,17 +212,10 @@ public class PlayerStateManager {
 	private String serializeStatistics(final Player player) {
 		final StringBuilder sb = new StringBuilder();
 		for (final Statistics statistics : Statistics.values()) {
-			// TODO: get bug fixed in canarymod
-			if (statistics == Statistics.TIMESINCEDEATH || statistics == Statistics.CROUCHONECM
-					|| statistics == Statistics.SPRINTONECM || statistics == Statistics.TALKEDTOVILLAGER
-					|| statistics == Statistics.TRADEDWITHVILLAGER) {
-				// continue; // Causes a concurrent operation exception?!?
-			} else {
-				sb.append(statistics.getNativeName());
-				sb.append("=");
-				sb.append(player.getStat(statistics.getInstance()));
-				sb.append(";");
-			}
+			sb.append(statistics.getNativeName());
+			sb.append("=");
+			sb.append(player.getStat(statistics.getInstance()));
+			sb.append(";");
 		}
 		return sb.toString();
 	}
