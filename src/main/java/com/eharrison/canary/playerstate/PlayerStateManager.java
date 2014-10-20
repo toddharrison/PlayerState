@@ -110,7 +110,14 @@ public class PlayerStateManager {
 		player.setPrefix(null);
 		player.setSpawnPosition(player.getLocation());
 		player.getEnderChestInventory().clearContents();
-		player.getInventory().clearContents();
+		
+		// Clear player inventory and equipment
+		final PlayerInventory pi = player.getInventory();
+		pi.clearContents();
+		pi.setBootsSlot(null);
+		pi.setChestPlateSlot(null);
+		pi.setHelmetSlot(null);
+		pi.setLeggingsSlot(null);
 		
 		for (final Achievements achievements : Achievements.values()) {
 			// TODO: get bug fixed in canarymod
