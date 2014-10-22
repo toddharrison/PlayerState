@@ -65,12 +65,8 @@ public class PlayerStateManager implements IPlayerStateManager {
 		playerDao.statistics = serializeStatistics(player);
 		
 		playerDao.update();
-	}
-	
-	@Override
-	public PlayerDao getPlayerState(final Player player, final String state)
-			throws DatabaseReadException {
-		return PlayerDao.getPlayerDao(player, state);
+		
+		PlayerStatePlugin.logger.info("Saved " + player.getDisplayName() + " at state " + state);
 	}
 	
 	@Override
@@ -108,7 +104,8 @@ public class PlayerStateManager implements IPlayerStateManager {
 	@Override
 	public boolean loadPlayerState(final Player player, final String state)
 			throws DatabaseReadException {
-		return loadPlayerState(player, getPlayerState(player, state));
+		PlayerStatePlugin.logger.info("Loaded " + player.getDisplayName() + " at state " + state);
+		return loadPlayerState(player, PlayerDao.getPlayerDao(player, state));
 	}
 	
 	@Override
@@ -141,6 +138,8 @@ public class PlayerStateManager implements IPlayerStateManager {
 		for (final Statistics statistics : Statistics.values()) {
 			player.setStat(statistics.getInstance(), 0);
 		}
+		
+		PlayerStatePlugin.logger.info("Cleared " + player.getDisplayName() + " state");
 	}
 	
 	private List<String> serializePotionEffects(final List<PotionEffect> effects) {
