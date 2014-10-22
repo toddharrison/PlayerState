@@ -9,9 +9,9 @@ import net.canarymod.database.exceptions.DatabaseReadException;
 import net.canarymod.database.exceptions.DatabaseWriteException;
 
 public class PlayerStateCommand implements CommandListener {
-	private final PlayerStateManager manager;
+	private final IPlayerStateManager manager;
 	
-	public PlayerStateCommand(final PlayerStateManager manager) {
+	public PlayerStateCommand(final IPlayerStateManager manager) {
 		this.manager = manager;
 	}
 	

@@ -2,7 +2,6 @@ package com.eharrison.canary.playerstate;
 
 import net.canarymod.Canary;
 import net.canarymod.api.entity.living.humanoid.Player;
-import net.canarymod.api.world.World;
 import net.canarymod.api.world.position.Location;
 import net.canarymod.commandsys.CommandDependencyException;
 import net.canarymod.database.exceptions.DatabaseReadException;
@@ -15,11 +14,14 @@ import net.canarymod.logger.Logman;
 import net.canarymod.plugin.Plugin;
 import net.canarymod.plugin.PluginListener;
 
+import com.eharrison.canary.playerstate.hook.WorldEnterHook;
+import com.eharrison.canary.playerstate.hook.WorldExitHook;
+
 public class PlayerStatePlugin extends Plugin implements PluginListener {
 	public static Logman logger;
 	
 	private final PlayerStateConfiguration config;
-	private final PlayerStateManager manager;
+	private final IPlayerStateManager manager;
 	private final PlayerStateCommand command;
 	
 	public PlayerStatePlugin() {
@@ -27,6 +29,8 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 		config = new PlayerStateConfiguration(this);
 		manager = new PlayerStateManager();
 		command = new PlayerStateCommand(manager);
+		
+		PlayerState.playerStateManager = manager;
 	}
 	
 	@Override
@@ -56,50 +60,38 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	}
 	
 	@HookHandler
-	public void onConnection(final ConnectionHook hook) throws DatabaseReadException {
-		if (config.automateOnWorldChange()) {
-			final Player player = hook.getPlayer();
-			manager.loadPlayerState(player, "WORLD-" + player.getWorld().getName());
+	public void onConnection(final ConnectionHook hook) {
+		final Player player = hook.getPlayer();
+		Canary.hooks().callHook(new WorldEnterHook(player, player.getWorld()));
+	}
+	
+	@HookHandler
+	public void onDisconnection(final DisconnectionHook hook) {
+		final Player player = hook.getPlayer();
+		Canary.hooks().callHook(new WorldExitHook(player, player.getWorld()));
+	}
+	
+	@HookHandler
+	public void onRespawning(final PlayerRespawningHook hook) {
+		final Player player = hook.getPlayer();
+		final Location respawnLoc = hook.getRespawnLocation();
+		if (respawnLoc != null && respawnLoc.getWorld() != player.getWorld()) {
+			Canary.hooks().callHook(new WorldExitHook(player, player.getWorld()));
+			Canary.hooks().callHook(new WorldEnterHook(player, respawnLoc.getWorld()));
 		}
 	}
 	
 	@HookHandler
-	public void onDisconnection(final DisconnectionHook hook) throws DatabaseWriteException {
+	public void onWorldEnter(final WorldEnterHook hook) throws DatabaseReadException {
 		if (config.automateOnWorldChange()) {
-			final Player player = hook.getPlayer();
-			manager.savePlayerState(player, "WORLD-" + player.getWorld().getName());
+			manager.loadPlayerState(hook.getPlayer(), "WORLD-" + hook.getWorld().getName());
 		}
 	}
 	
 	@HookHandler
-	public void onRespawning(final PlayerRespawningHook hook) throws DatabaseReadException,
-			DatabaseWriteException {
+	public void onWorldExit(final WorldExitHook hook) throws DatabaseWriteException {
 		if (config.automateOnWorldChange()) {
-			final Player player = hook.getPlayer();
-			final Location respawnLoc = hook.getRespawnLocation();
-			final World currentWorld = player.getWorld();
-			if (respawnLoc == null) {
-				// You died
-			} else {
-				if (respawnLoc.getWorld() != currentWorld) {
-					manager.savePlayerState(player, "WORLD-" + currentWorld.getName());
-					if (!manager.loadPlayerState(player, "WORLD-" + respawnLoc.getWorldName())) {
-						manager.clearPlayerState(player);
-					}
-				}
-			}
+			manager.savePlayerState(hook.getPlayer(), "WORLD-" + hook.getWorld().getName());
 		}
 	}
-	
-	// @HookHandler
-	// public void onTeleport(final TeleportHook hook) throws DatabaseReadException,
-	// DatabaseWriteException {
-	// if (config.automateOnWorldChange()) {
-	// if (hook.getDestination().getWorld() != hook.getCurrentLocation().getWorld()) {
-	// final Player player = hook.getPlayer();
-	// manager.savePlayerState(player, player.getWorld().getName());
-	// manager.changePlayerState(player, hook.getDestination().getWorldName());
-	// }
-	// }
-	// }
 }

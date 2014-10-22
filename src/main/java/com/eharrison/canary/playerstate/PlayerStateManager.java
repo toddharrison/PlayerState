@@ -25,12 +25,16 @@ import net.canarymod.api.world.position.Location;
 import net.canarymod.database.exceptions.DatabaseReadException;
 import net.canarymod.database.exceptions.DatabaseWriteException;
 
-public class PlayerStateManager {
+public class PlayerStateManager implements IPlayerStateManager {
 	private static final PotionFactory POTION_FACTORY = Canary.factory().getPotionFactory();
 	private static final ItemFactory ITEM_FACTORY = Canary.factory().getItemFactory();
 	private static final NBTFactory NBT_FACTORY = Canary.factory().getNBTFactory();
 	private static final StatisticsFactory STATS_FACTORY = Canary.factory().getStatisticsFactory();
 	
+	protected PlayerStateManager() {
+	}
+	
+	@Override
 	public void savePlayerState(final Player player, final String state)
 			throws DatabaseWriteException {
 		final PlayerDao playerDao = new PlayerDao();
@@ -63,10 +67,15 @@ public class PlayerStateManager {
 		playerDao.update();
 	}
 	
-	public boolean loadPlayerState(final Player player, final String state)
+	@Override
+	public PlayerDao getPlayerState(final Player player, final String state)
 			throws DatabaseReadException {
+		return PlayerDao.getPlayerDao(player, state);
+	}
+	
+	@Override
+	public boolean loadPlayerState(final Player player, final PlayerDao playerDao) {
 		boolean loaded = false;
-		final PlayerDao playerDao = PlayerDao.getPlayerDao(player, state);
 		if (playerDao != null) {
 			player.setAge(playerDao.age);
 			applyPotionEffects(playerDao.effects, player);
@@ -96,6 +105,13 @@ public class PlayerStateManager {
 		return loaded;
 	}
 	
+	@Override
+	public boolean loadPlayerState(final Player player, final String state)
+			throws DatabaseReadException {
+		return loadPlayerState(player, getPlayerState(player, state));
+	}
+	
+	@Override
 	public void clearPlayerState(final Player player) {
 		// TODO allow configuration of what the starting player state is
 		player.setAge(0);
