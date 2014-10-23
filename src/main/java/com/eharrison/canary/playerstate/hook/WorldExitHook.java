@@ -42,4 +42,8 @@ public class WorldExitHook extends Hook {
 	public void setToLocation(final Location toLocation) {
 		this.toLocation = toLocation;
 	}
+	
+	public boolean isPlayerDead() {
+		return toLocation == null;
+	}
 }
