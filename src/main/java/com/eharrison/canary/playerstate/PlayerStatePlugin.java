@@ -103,7 +103,7 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	}
 	
 	@HookHandler
-	public void onRespawn(final PlayerRespawnedHook hook) {
+	public void onRespawned(final PlayerRespawnedHook hook) {
 		final Player player = hook.getPlayer();
 		final WorldEnterHook enterHook = respawns.remove(player.getUUIDString());
 		if (enterHook != null) {
