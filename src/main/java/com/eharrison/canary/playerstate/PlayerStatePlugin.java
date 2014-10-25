@@ -1,5 +1,8 @@
 package com.eharrison.canary.playerstate;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import net.canarymod.Canary;
 import net.canarymod.api.entity.living.humanoid.Player;
 import net.canarymod.api.world.position.Location;
@@ -9,6 +12,7 @@ import net.canarymod.database.exceptions.DatabaseWriteException;
 import net.canarymod.hook.HookHandler;
 import net.canarymod.hook.player.ConnectionHook;
 import net.canarymod.hook.player.DisconnectionHook;
+import net.canarymod.hook.player.PlayerRespawnedHook;
 import net.canarymod.hook.player.PlayerRespawningHook;
 import net.canarymod.logger.Logman;
 import net.canarymod.plugin.Plugin;
@@ -16,6 +20,7 @@ import net.canarymod.plugin.PluginListener;
 
 import com.eharrison.canary.playerstate.hook.WorldEnterHook;
 import com.eharrison.canary.playerstate.hook.WorldExitHook;
+import com.eharrison.canary.playerstate.hook.WorldExitHook.ExitCause;
 
 public class PlayerStatePlugin extends Plugin implements PluginListener {
 	public static Logman logger;
@@ -23,12 +28,14 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	private final PlayerStateConfiguration config;
 	private final IPlayerStateManager manager;
 	private final PlayerStateCommand command;
+	private final Map<String, WorldEnterHook> respawns;
 	
 	public PlayerStatePlugin() {
 		PlayerStatePlugin.logger = getLogman();
 		config = new PlayerStateConfiguration(this);
 		manager = new PlayerStateManager();
 		command = new PlayerStateCommand(manager);
+		respawns = new HashMap<String, WorldEnterHook>();
 		
 		PlayerState.playerStateManager = manager;
 	}
@@ -68,42 +75,40 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	@HookHandler
 	public void onDisconnection(final DisconnectionHook hook) {
 		final Player player = hook.getPlayer();
-		Canary.hooks().callHook(new WorldExitHook(player, player.getWorld(), player.getLocation()));
+		Canary.hooks().callHook(
+				new WorldExitHook(player, player.getWorld(), player.getLocation(), ExitCause.DISCONNECT));
 	}
 	
 	@HookHandler
 	public void onRespawning(final PlayerRespawningHook hook) {
 		final Player player = hook.getPlayer();
 		Location respawnLoc = hook.getRespawnLocation();
-		if (respawnLoc != null) {
-			if (respawnLoc.getWorld() != player.getWorld()) {
-				final WorldExitHook exitHook = new WorldExitHook(player, player.getWorld(),
-						player.getLocation(), respawnLoc);
-				Canary.hooks().callHook(exitHook);
-				respawnLoc = exitHook.getToLocation();
-				
-				final WorldEnterHook enterHook = new WorldEnterHook(player, respawnLoc.getWorld(),
-						player.getLocation(), respawnLoc);
-				Canary.hooks().callHook(enterHook);
-				
-				if (enterHook.getToLocation() != null) {
-					hook.setRespawnLocation(enterHook.getToLocation());
-				}
-			}
-		} else {
-			// Player died, exit world and allow hook chain to handle respawn location
+		ExitCause cause = ExitCause.COMMAND;
+		if (respawnLoc == null) {
+			cause = ExitCause.DEATH;
+		}
+		if (cause == ExitCause.DEATH || respawnLoc.getWorld() != player.getWorld()) {
 			final WorldExitHook exitHook = new WorldExitHook(player, player.getWorld(),
-					player.getLocation(), respawnLoc);
+					player.getLocation(), respawnLoc, cause);
 			Canary.hooks().callHook(exitHook);
 			respawnLoc = exitHook.getToLocation();
 			
-			final WorldEnterHook enterHook = new WorldEnterHook(player, respawnLoc.getWorld(),
-					player.getLocation(), respawnLoc);
-			Canary.hooks().callHook(enterHook);
+			respawns.put(player.getUUIDString(),
+					new WorldEnterHook(player, respawnLoc.getWorld(), player.getLocation(), respawnLoc));
 			
-			if (enterHook.getToLocation() != null) {
-				hook.setRespawnLocation(enterHook.getToLocation());
+			if (exitHook.getToLocation() != null) {
+				hook.setRespawnLocation(exitHook.getToLocation());
 			}
+		}
+	}
+	
+	@HookHandler
+	public void onRespawn(final PlayerRespawnedHook hook) {
+		final Player player = hook.getPlayer();
+		final WorldEnterHook enterHook = respawns.remove(player.getUUIDString());
+		if (enterHook != null) {
+			enterHook.setToLocation(hook.getLocation());
+			Canary.hooks().callHook(enterHook);
 		}
 	}
 	
@@ -131,7 +136,7 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	@HookHandler
 	public void onWorldExit(final WorldExitHook hook) throws DatabaseReadException,
 			DatabaseWriteException {
-		if (!hook.isPlayerDead()) {
+		if (hook.getCause() != ExitCause.DEATH) {
 			final Player player = hook.getPlayer();
 			final String fromWorld = hook.getWorld().getName();
 			if (config.automateOnWorldChange()) {

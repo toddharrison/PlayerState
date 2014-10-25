@@ -10,17 +10,20 @@ public class WorldExitHook extends Hook {
 	private final World world;
 	private final Location fromLocation;
 	private Location toLocation;
+	private final ExitCause cause;
 	
-	public WorldExitHook(final Player player, final World world, final Location fromLocation) {
-		this(player, world, fromLocation, null);
+	public WorldExitHook(final Player player, final World world, final Location fromLocation,
+			final ExitCause cause) {
+		this(player, world, fromLocation, null, cause);
 	}
 	
 	public WorldExitHook(final Player player, final World world, final Location fromLocation,
-			final Location toLocation) {
+			final Location toLocation, final ExitCause cause) {
 		this.player = player;
 		this.world = world;
 		this.fromLocation = fromLocation;
 		this.toLocation = toLocation;
+		this.cause = cause;
 	}
 	
 	public Player getPlayer() {
@@ -43,7 +46,11 @@ public class WorldExitHook extends Hook {
 		this.toLocation = toLocation;
 	}
 	
-	public boolean isPlayerDead() {
-		return toLocation == null;
+	public ExitCause getCause() {
+		return cause;
+	}
+	
+	public enum ExitCause {
+		DEATH, DISCONNECT, COMMAND
 	}
 }

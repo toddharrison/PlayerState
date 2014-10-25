@@ -70,42 +70,12 @@ public class PlayerStateManager implements IPlayerStateManager {
 	}
 	
 	@Override
-	public boolean loadPlayerState(final Player player, final PlayerDao playerDao) {
-		boolean loaded = false;
-		if (playerDao != null) {
-			player.setAge(playerDao.age);
-			applyPotionEffects(playerDao.effects, player);
-			player.setExhaustion(playerDao.exhaustion);
-			player.setExperience(playerDao.experience);
-			// player.setFireTicks(fire);
-			player.setHealth(playerDao.health);
-			player.setHome(Location.fromString(playerDao.homeLocation));
-			player.setHunger(playerDao.hunger);
-			// player.setInvulnerabilityTicks(invunerable);
-			// player.setLevel(level);
-			// player.teleportTo(Location.fromString(playerDao.location));
-			player.setMaxHealth(playerDao.maxHealth);
-			player.setModeId(playerDao.gameMode);
-			player.setPrefix(playerDao.prefix);
-			player.setSpawnPosition(Location.fromString(playerDao.spawnLocation));
-			
-			restoreInventory(playerDao.enderInventory, player.getEnderChestInventory());
-			restoreInventory(playerDao.inventory, player.getInventory());
-			restoreEquipment(playerDao.equipment, player.getInventory());
-			
-			restoreAchievements(playerDao.achievements, player);
-			restoreStatistics(playerDao.statistics, player);
-			
-			loaded = true;
-		}
-		return loaded;
-	}
-	
-	@Override
 	public boolean loadPlayerState(final Player player, final String state)
 			throws DatabaseReadException {
-		PlayerStatePlugin.logger.info("Loaded " + player.getDisplayName() + " at state " + state);
-		return loadPlayerState(player, PlayerDao.getPlayerDao(player, state));
+		final boolean success = loadPlayerState(player, PlayerDao.getPlayerDao(player, state));
+		PlayerStatePlugin.logger.info("Loaded " + player.getDisplayName() + " at state " + state + ": "
+				+ success);
+		return success;
 	}
 	
 	@Override
@@ -140,6 +110,37 @@ public class PlayerStateManager implements IPlayerStateManager {
 		}
 		
 		PlayerStatePlugin.logger.info("Cleared " + player.getDisplayName() + " state");
+	}
+	
+	private boolean loadPlayerState(final Player player, final PlayerDao playerDao) {
+		boolean loaded = false;
+		if (playerDao != null) {
+			player.setAge(playerDao.age);
+			applyPotionEffects(playerDao.effects, player);
+			player.setExhaustion(playerDao.exhaustion);
+			player.setExperience(playerDao.experience);
+			// player.setFireTicks(fire);
+			player.setHealth(playerDao.health);
+			player.setHome(Location.fromString(playerDao.homeLocation));
+			player.setHunger(playerDao.hunger);
+			// player.setInvulnerabilityTicks(invunerable);
+			// player.setLevel(level);
+			// player.teleportTo(Location.fromString(playerDao.location));
+			player.setMaxHealth(playerDao.maxHealth);
+			player.setModeId(playerDao.gameMode);
+			player.setPrefix(playerDao.prefix);
+			player.setSpawnPosition(Location.fromString(playerDao.spawnLocation));
+			
+			restoreInventory(playerDao.enderInventory, player.getEnderChestInventory());
+			restoreInventory(playerDao.inventory, player.getInventory());
+			restoreEquipment(playerDao.equipment, player.getInventory());
+			
+			restoreAchievements(playerDao.achievements, player);
+			restoreStatistics(playerDao.statistics, player);
+			
+			loaded = true;
+		}
+		return loaded;
 	}
 	
 	private List<String> serializePotionEffects(final List<PotionEffect> effects) {
