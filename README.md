@@ -1,6 +1,6 @@
 PlayerState
 ===========
-v0.0.6
+v0.0.7
 
 PlayerState is a simple plugin which will save and load player state within Minecraft. It is built against the latest 1.1.3-SNAPSHOT of [canarymod](http://www.canarymod.net/) and I will be maintaining it and transitioning to Minecraft 1.8 when that is ready. I will also be adding additional features as they come to mind. This plugin will save information like:
 
