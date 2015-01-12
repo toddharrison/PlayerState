@@ -11,5 +11,5 @@ public interface IPlayerStateManager {
 	
 	boolean loadPlayerState(Player player, String state) throws DatabaseReadException;
 	
-	void clearPlayerState(Player player);
+	void clearPlayerState(Player player, final String state);
 }

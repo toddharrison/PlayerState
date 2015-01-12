@@ -5,6 +5,7 @@ import java.util.Map;
 
 import net.canarymod.Canary;
 import net.canarymod.api.entity.living.humanoid.Player;
+import net.canarymod.api.world.World;
 import net.canarymod.api.world.position.Location;
 import net.canarymod.commandsys.CommandDependencyException;
 import net.canarymod.database.exceptions.DatabaseReadException;
@@ -18,9 +19,9 @@ import net.canarymod.logger.Logman;
 import net.canarymod.plugin.Plugin;
 import net.canarymod.plugin.PluginListener;
 
+import com.eharrison.canary.playerstate.hook.WorldChangeCause;
 import com.eharrison.canary.playerstate.hook.WorldEnterHook;
 import com.eharrison.canary.playerstate.hook.WorldExitHook;
-import com.eharrison.canary.playerstate.hook.WorldExitHook.ExitCause;
 
 public class PlayerStatePlugin extends Plugin implements PluginListener {
 	public static Logman logger;
@@ -33,7 +34,7 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	public PlayerStatePlugin() {
 		PlayerStatePlugin.logger = getLogman();
 		config = new PlayerStateConfiguration(this);
-		manager = new PlayerStateManager();
+		manager = new PlayerStateManager(config);
 		command = new PlayerStateCommand(manager);
 		respawns = new HashMap<String, WorldEnterHook>();
 		
@@ -69,32 +70,39 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	@HookHandler
 	public void onConnection(final ConnectionHook hook) {
 		final Player player = hook.getPlayer();
-		Canary.hooks().callHook(new WorldEnterHook(player, player.getWorld()));
+		Canary.hooks().callHook(
+				new WorldEnterHook(player, player.getWorld(), WorldChangeCause.CONNECTION));
 	}
 	
 	@HookHandler
 	public void onDisconnection(final DisconnectionHook hook) {
 		final Player player = hook.getPlayer();
 		Canary.hooks().callHook(
-				new WorldExitHook(player, player.getWorld(), player.getLocation(), ExitCause.DISCONNECT));
+				new WorldExitHook(player, player.getWorld(), player.getLocation(),
+						WorldChangeCause.CONNECTION));
 	}
 	
 	@HookHandler
 	public void onRespawning(final PlayerRespawningHook hook) {
 		final Player player = hook.getPlayer();
 		Location respawnLoc = hook.getRespawnLocation();
-		ExitCause cause = ExitCause.COMMAND;
-		if (respawnLoc == null) {
-			cause = ExitCause.DEATH;
+		
+		WorldChangeCause cause = WorldChangeCause.COMMAND;
+		if (player.getHealth() == 0.0f) {
+			cause = WorldChangeCause.DEATH;
 		}
-		if (cause == ExitCause.DEATH || respawnLoc.getWorld() != player.getWorld()) {
+		if (cause == WorldChangeCause.DEATH || respawnLoc.getWorld() != player.getWorld()) {
 			final WorldExitHook exitHook = new WorldExitHook(player, player.getWorld(),
 					player.getLocation(), respawnLoc, cause);
 			Canary.hooks().callHook(exitHook);
 			respawnLoc = exitHook.getToLocation();
+			World world = player.getWorld();
+			if (respawnLoc != null) {
+				world = respawnLoc.getWorld();
+			}
 			
-			respawns.put(player.getUUIDString(),
-					new WorldEnterHook(player, respawnLoc.getWorld(), player.getLocation(), respawnLoc));
+			respawns.put(player.getUUIDString(), new WorldEnterHook(player, world, player.getLocation(),
+					respawnLoc, cause));
 			
 			if (exitHook.getToLocation() != null) {
 				hook.setRespawnLocation(exitHook.getToLocation());
@@ -114,20 +122,24 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	
 	@HookHandler
 	public void onWorldEnter(final WorldEnterHook hook) throws DatabaseReadException {
-		final Player player = hook.getPlayer();
-		final String toWorld = hook.getWorld().getName();
-		if (config.automateOnWorldChange()) {
-			if (!manager.loadPlayerState(player, PlayerState.WORLD_PREFIX + toWorld)) {
-				manager.clearPlayerState(player);
-			}
-		} else {
-			if (PlayerState.registeredWorlds.contains(toWorld)) {
-				if (!manager.loadPlayerState(player, PlayerState.WORLD_PREFIX + toWorld)) {
-					manager.clearPlayerState(player);
+		if (hook.getCause() != WorldChangeCause.DEATH) {
+			final Player player = hook.getPlayer();
+			final String toWorld = hook.getWorld().getName();
+			if (config.automateOnWorldChange()) {
+				final String state = PlayerState.WORLD_PREFIX + toWorld;
+				if (!manager.loadPlayerState(player, state)) {
+					manager.clearPlayerState(player, state);
 				}
 			} else {
-				if (!manager.loadPlayerState(player, PlayerState.ALL_WORLDS)) {
-					manager.clearPlayerState(player);
+				if (PlayerState.registeredWorlds.contains(toWorld)) {
+					final String state = PlayerState.WORLD_PREFIX + toWorld;
+					if (!manager.loadPlayerState(player, state)) {
+						manager.clearPlayerState(player, state);
+					}
+				} else {
+					if (!manager.loadPlayerState(player, PlayerState.ALL_WORLDS)) {
+						manager.clearPlayerState(player, PlayerState.ALL_WORLDS);
+					}
 				}
 			}
 		}
@@ -136,7 +148,7 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	@HookHandler
 	public void onWorldExit(final WorldExitHook hook) throws DatabaseReadException,
 			DatabaseWriteException {
-		if (hook.getCause() != ExitCause.DEATH) {
+		if (hook.getCause() != WorldChangeCause.DEATH) {
 			final Player player = hook.getPlayer();
 			final String fromWorld = hook.getWorld().getName();
 			if (config.automateOnWorldChange()) {

@@ -10,15 +10,15 @@ public class WorldExitHook extends Hook {
 	private final World world;
 	private final Location fromLocation;
 	private Location toLocation;
-	private final ExitCause cause;
+	private final WorldChangeCause cause;
 	
 	public WorldExitHook(final Player player, final World world, final Location fromLocation,
-			final ExitCause cause) {
+			final WorldChangeCause cause) {
 		this(player, world, fromLocation, null, cause);
 	}
 	
 	public WorldExitHook(final Player player, final World world, final Location fromLocation,
-			final Location toLocation, final ExitCause cause) {
+			final Location toLocation, final WorldChangeCause cause) {
 		this.player = player;
 		this.world = world;
 		this.fromLocation = fromLocation;
@@ -46,11 +46,7 @@ public class WorldExitHook extends Hook {
 		this.toLocation = toLocation;
 	}
 	
-	public ExitCause getCause() {
+	public WorldChangeCause getCause() {
 		return cause;
-	}
-	
-	public enum ExitCause {
-		DEATH, DISCONNECT, COMMAND
 	}
 }

@@ -31,7 +31,10 @@ public class PlayerStateManager implements IPlayerStateManager {
 	private static final NBTFactory NBT_FACTORY = Canary.factory().getNBTFactory();
 	private static final StatisticsFactory STATS_FACTORY = Canary.factory().getStatisticsFactory();
 	
-	protected PlayerStateManager() {
+	private final PlayerStateConfiguration config;
+	
+	protected PlayerStateManager(final PlayerStateConfiguration config) {
+		this.config = config;
 	}
 	
 	@Override
@@ -41,28 +44,46 @@ public class PlayerStateManager implements IPlayerStateManager {
 		playerDao.uuid = player.getUUIDString();
 		playerDao.state = state;
 		
-		playerDao.age = player.getAge();
-		playerDao.effects = serializePotionEffects(player.getAllActivePotionEffects());
-		playerDao.exhaustion = player.getExhaustionLevel();
-		playerDao.experience = player.getExperience();
+		// playerDao.age = player.getAge();
 		// final int fire = player.getFireTicks();
-		playerDao.health = player.getHealth();
-		playerDao.homeLocation = player.getHome().toString();
-		playerDao.hunger = player.getHunger();
 		// final int invunerable = player.getInvulnerabilityTicks();
 		// final int level = player.getLevel();
-		playerDao.location = player.getLocation().toString();
-		playerDao.maxHealth = player.getMaxHealth();
-		playerDao.gameMode = player.getModeId();
-		playerDao.prefix = player.getPrefix();
-		playerDao.spawnLocation = player.getSpawnPosition().toString();
 		
-		playerDao.enderInventory = serializeInventory(player.getEnderChestInventory());
-		playerDao.inventory = serializeInventory(player.getInventory());
-		playerDao.equipment = serializeEquipment(player.getInventory());
+		if (config.saveGameMode(state)) {
+			playerDao.gameMode = player.getModeId();
+		}
 		
-		playerDao.achievements = serializeAchievements(player);
-		playerDao.statistics = serializeStatistics(player);
+		if (config.savePrefix(state)) {
+			playerDao.prefix = player.getPrefix();
+		}
+		
+		if (config.saveLocations(state)) {
+			playerDao.homeLocation = player.getHome().toString();
+			playerDao.location = player.getLocation().toString();
+			playerDao.spawnLocation = player.getSpawnPosition().toString();
+		}
+		
+		if (config.saveConditions(state)) {
+			playerDao.effects = serializePotionEffects(player.getAllActivePotionEffects());
+			playerDao.exhaustion = player.getExhaustionLevel();
+			playerDao.experience = player.getExperience();
+			playerDao.health = player.getHealth();
+			playerDao.hunger = player.getHunger();
+			playerDao.maxHealth = player.getMaxHealth();
+		}
+		
+		if (config.saveInventory(state)) {
+			playerDao.enderInventory = serializeInventory(player.getEnderChestInventory());
+			playerDao.inventory = serializeInventory(player.getInventory());
+			playerDao.equipment = serializeEquipment(player.getInventory());
+		}
+		
+		if (config.saveAchievements(state)) {
+			playerDao.achievements = serializeAchievements(player);
+		}
+		if (config.saveStatistics(state)) {
+			playerDao.statistics = serializeStatistics(player);
+		}
 		
 		playerDao.update();
 		
@@ -72,71 +93,115 @@ public class PlayerStateManager implements IPlayerStateManager {
 	@Override
 	public boolean loadPlayerState(final Player player, final String state)
 			throws DatabaseReadException {
-		final boolean success = loadPlayerState(player, PlayerDao.getPlayerDao(player, state));
+		final boolean success = loadPlayerState(player, state, PlayerDao.getPlayerDao(player, state));
 		PlayerStatePlugin.logger.info("Loaded " + player.getDisplayName() + " at state " + state + ": "
 				+ success);
 		return success;
 	}
 	
 	@Override
-	public void clearPlayerState(final Player player) {
-		// TODO allow configuration of what the starting player state is
-		player.setAge(0);
-		player.removeAllPotionEffects();
-		player.setExhaustion(0);
-		player.setExperience(0);
-		player.setHealth(20);
-		player.setHome(player.getLocation());
-		player.setHunger(20);
-		player.setMaxHealth(20);
-		player.setMode(GameMode.SURVIVAL);
-		player.setPrefix(null);
-		player.setSpawnPosition(player.getLocation());
-		player.getEnderChestInventory().clearContents();
+	public void clearPlayerState(final Player player, final String state) {
+		// player.setAge(0);
 		
-		// Clear player inventory and equipment
-		final PlayerInventory pi = player.getInventory();
-		pi.clearContents();
-		pi.setBootsSlot(null);
-		pi.setChestPlateSlot(null);
-		pi.setHelmetSlot(null);
-		pi.setLeggingsSlot(null);
-		
-		for (final Achievements achievements : Achievements.values()) {
-			player.setStat(achievements.getInstance(), 0);
+		if (config.saveGameMode(state)) {
+			player.setMode(GameMode.SURVIVAL);
 		}
-		for (final Statistics statistics : Statistics.values()) {
-			player.setStat(statistics.getInstance(), 0);
+		
+		if (config.savePrefix(state)) {
+			player.setPrefix(null);
+		}
+		
+		if (config.saveLocations(state)) {
+			player.setHome(player.getLocation());
+			player.setSpawnPosition(player.getLocation());
+		}
+		
+		if (config.saveConditions(state)) {
+			player.removeAllPotionEffects();
+			player.setExhaustion(0);
+			
+			// TODO Canary bug
+			player.removeExperience(player.getExperience());
+			// player.setExperience(0);
+			
+			player.setHealth(20);
+			player.setHunger(20);
+			player.setMaxHealth(20);
+		}
+		
+		if (config.saveInventory(state)) {
+			// Clear player inventory and equipment
+			final PlayerInventory pi = player.getInventory();
+			pi.clearContents();
+			pi.setBootsSlot(null);
+			pi.setChestPlateSlot(null);
+			pi.setHelmetSlot(null);
+			pi.setLeggingsSlot(null);
+			player.getEnderChestInventory().clearContents();
+		}
+		
+		if (config.saveAchievements(state)) {
+			for (final Achievements achievements : Achievements.values()) {
+				player.setStat(achievements.getInstance(), 0);
+			}
+		}
+		if (config.saveStatistics(state)) {
+			for (final Statistics statistics : Statistics.values()) {
+				player.setStat(statistics.getInstance(), 0);
+			}
 		}
 		
 		PlayerStatePlugin.logger.info("Cleared " + player.getDisplayName() + " state");
 	}
 	
-	private boolean loadPlayerState(final Player player, final PlayerDao playerDao) {
+	private boolean loadPlayerState(final Player player, final String state, final PlayerDao playerDao) {
 		boolean loaded = false;
 		if (playerDao != null) {
-			player.setAge(playerDao.age);
-			applyPotionEffects(playerDao.effects, player);
-			player.setExhaustion(playerDao.exhaustion);
-			player.setExperience(playerDao.experience);
+			// player.setAge(playerDao.age);
 			// player.setFireTicks(fire);
-			player.setHealth(playerDao.health);
-			player.setHome(Location.fromString(playerDao.homeLocation));
-			player.setHunger(playerDao.hunger);
 			// player.setInvulnerabilityTicks(invunerable);
 			// player.setLevel(level);
 			// player.teleportTo(Location.fromString(playerDao.location));
-			player.setMaxHealth(playerDao.maxHealth);
-			player.setModeId(playerDao.gameMode);
-			player.setPrefix(playerDao.prefix);
-			player.setSpawnPosition(Location.fromString(playerDao.spawnLocation));
 			
-			restoreInventory(playerDao.enderInventory, player.getEnderChestInventory());
-			restoreInventory(playerDao.inventory, player.getInventory());
-			restoreEquipment(playerDao.equipment, player.getInventory());
+			if (config.saveGameMode(state)) {
+				player.setModeId(playerDao.gameMode);
+			}
 			
-			restoreAchievements(playerDao.achievements, player);
-			restoreStatistics(playerDao.statistics, player);
+			if (config.savePrefix(state)) {
+				player.setPrefix(playerDao.prefix);
+			}
+			
+			if (config.saveLocations(state)) {
+				player.setHome(Location.fromString(playerDao.homeLocation));
+				player.setSpawnPosition(Location.fromString(playerDao.spawnLocation));
+			}
+			
+			if (config.saveConditions(state)) {
+				applyPotionEffects(playerDao.effects, player);
+				player.setExhaustion(playerDao.exhaustion);
+				
+				// TODO Canary bug
+				player.removeExperience(player.getExperience());
+				player.addExperience(playerDao.experience);
+				// player.setExperience(playerDao.experience);
+				
+				player.setHealth(playerDao.health);
+				player.setHunger(playerDao.hunger);
+				player.setMaxHealth(playerDao.maxHealth);
+			}
+			
+			if (config.saveInventory(state)) {
+				restoreInventory(playerDao.enderInventory, player.getEnderChestInventory());
+				restoreInventory(playerDao.inventory, player.getInventory());
+				restoreEquipment(playerDao.equipment, player.getInventory());
+			}
+			
+			if (config.saveAchievements(state)) {
+				restoreAchievements(playerDao.achievements, player);
+			}
+			if (config.saveStatistics(state)) {
+				restoreStatistics(playerDao.statistics, player);
+			}
 			
 			loaded = true;
 		}
