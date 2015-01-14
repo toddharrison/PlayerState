@@ -8,7 +8,13 @@ import net.canarymod.commandsys.CommandListener;
 import net.canarymod.database.exceptions.DatabaseReadException;
 import net.canarymod.database.exceptions.DatabaseWriteException;
 
+import com.eharrison.canary.playerstate.PlayerState.Save;
+
 public class PlayerStateCommand implements CommandListener {
+	private static final Save[] saves = new Save[] {
+			Save.CONDITIONS, Save.INVENTORY, Save.LOCATIONS
+	};
+	
 	private final IPlayerStateManager manager;
 	
 	public PlayerStateCommand(final IPlayerStateManager manager) {
@@ -39,7 +45,7 @@ public class PlayerStateCommand implements CommandListener {
 		}
 		if (player != null) {
 			final String state = parameters[1];
-			manager.savePlayerState(player, state);
+			manager.savePlayerState(player, state, saves);
 			caller.message("Saved " + player.getDisplayName() + " current state as " + state);
 		}
 	}
@@ -59,7 +65,8 @@ public class PlayerStateCommand implements CommandListener {
 		}
 		if (player != null) {
 			final String state = parameters[1];
-			manager.loadPlayerState(player, state);
+			manager.loadPlayerState(player, state, saves);
+			manager.restorePlayerLocation(player, state);
 			caller.message("Changed " + player.getDisplayName() + " current state to " + state);
 		}
 	}

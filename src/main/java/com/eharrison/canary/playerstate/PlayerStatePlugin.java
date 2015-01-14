@@ -19,6 +19,7 @@ import net.canarymod.logger.Logman;
 import net.canarymod.plugin.Plugin;
 import net.canarymod.plugin.PluginListener;
 
+import com.eharrison.canary.playerstate.PlayerState.Save;
 import com.eharrison.canary.playerstate.hook.WorldChangeCause;
 import com.eharrison.canary.playerstate.hook.WorldEnterHook;
 import com.eharrison.canary.playerstate.hook.WorldExitHook;
@@ -34,11 +35,9 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	public PlayerStatePlugin() {
 		PlayerStatePlugin.logger = getLogman();
 		config = new PlayerStateConfiguration(this);
-		manager = new PlayerStateManager(config);
+		manager = new PlayerStateManager();
 		command = new PlayerStateCommand(manager);
 		respawns = new HashMap<String, WorldEnterHook>();
-		
-		PlayerState.playerStateManager = manager;
 	}
 	
 	@Override
@@ -127,18 +126,22 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 			final String toWorld = hook.getWorld().getName();
 			if (config.automateOnWorldChange()) {
 				final String state = PlayerState.WORLD_PREFIX + toWorld;
-				if (!manager.loadPlayerState(player, state)) {
-					manager.clearPlayerState(player, state);
+				final Save[] saves = config.getSaves(state);
+				if (!manager.loadPlayerState(player, state, saves)) {
+					manager.clearPlayerState(player, state, saves);
 				}
 			} else {
-				if (PlayerState.registeredWorlds.contains(toWorld)) {
+				if (PlayerState.registeredWorlds.containsKey(toWorld)) {
 					final String state = PlayerState.WORLD_PREFIX + toWorld;
-					if (!manager.loadPlayerState(player, state)) {
-						manager.clearPlayerState(player, state);
+					final Save[] saves = PlayerState.registeredWorlds.get(toWorld);
+					if (!manager.loadPlayerState(player, state, saves)) {
+						manager.clearPlayerState(player, state, saves);
 					}
 				} else {
-					if (!manager.loadPlayerState(player, PlayerState.ALL_WORLDS)) {
-						manager.clearPlayerState(player, PlayerState.ALL_WORLDS);
+					final String state = PlayerState.ALL_WORLDS;
+					final Save[] saves = config.getSaves(state);
+					if (!manager.loadPlayerState(player, state, saves)) {
+						manager.clearPlayerState(player, state, saves);
 					}
 				}
 			}
@@ -152,12 +155,18 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 			final Player player = hook.getPlayer();
 			final String fromWorld = hook.getWorld().getName();
 			if (config.automateOnWorldChange()) {
-				manager.savePlayerState(player, PlayerState.WORLD_PREFIX + fromWorld);
+				final String state = PlayerState.WORLD_PREFIX + fromWorld;
+				final Save[] saves = config.getSaves(state);
+				manager.savePlayerState(player, state, saves);
 			} else {
-				if (PlayerState.registeredWorlds.contains(fromWorld)) {
-					manager.savePlayerState(player, PlayerState.WORLD_PREFIX + fromWorld);
+				if (PlayerState.registeredWorlds.containsKey(fromWorld)) {
+					final String state = PlayerState.WORLD_PREFIX + fromWorld;
+					final Save[] saves = PlayerState.registeredWorlds.get(fromWorld);
+					manager.savePlayerState(player, state, saves);
 				} else {
-					manager.savePlayerState(player, PlayerState.ALL_WORLDS);
+					final String state = PlayerState.ALL_WORLDS;
+					final Save[] saves = config.getSaves(state);
+					manager.savePlayerState(player, state, saves);
 				}
 			}
 		}
