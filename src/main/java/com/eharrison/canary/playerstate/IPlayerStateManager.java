@@ -13,7 +13,7 @@ public interface IPlayerStateManager {
 	
 	boolean loadPlayerState(Player player, String state, Save[] saves) throws DatabaseReadException;
 	
-	void clearPlayerState(Player player, String state, Save[] saves);
+	void clearPlayerState(Player player, String state, Save[] saves) throws DatabaseReadException;
 	
 	void restorePlayerLocation(Player player, String state) throws DatabaseReadException;
 }

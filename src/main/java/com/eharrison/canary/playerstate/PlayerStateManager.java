@@ -97,50 +97,53 @@ public class PlayerStateManager implements IPlayerStateManager {
 	}
 	
 	@Override
-	public void clearPlayerState(final Player player, final String state, final Save[] saves) {
-		// player.setAge(0);
-		
-		for (final Save save : saves) {
-			switch (save) {
-				case ACHIEVEMENTS:
-					for (final Achievements achievements : Achievements.values()) {
-						player.setStat(achievements.getInstance(), 0);
-					}
-					break;
-				case CONDITIONS:
-					player.removeAllPotionEffects();
-					player.setExhaustion(0);
-					player.setExperience(0);
-					player.setHealth(20);
-					player.setHunger(20);
-					player.setMaxHealth(20);
-					break;
-				case GAMEMODE:
-					player.setMode(GameMode.SURVIVAL);
-					break;
-				case INVENTORY:
-					final PlayerInventory pi = player.getInventory();
-					pi.clearContents();
-					pi.setBootsSlot(null);
-					pi.setChestPlateSlot(null);
-					pi.setHelmetSlot(null);
-					pi.setLeggingsSlot(null);
-					player.getEnderChestInventory().clearContents();
-					break;
-				case LOCATIONS:
-					player.setHome(player.getLocation());
-					player.setSpawnPosition(player.getLocation());
-					break;
-				case PREFIX:
-					player.setPrefix(null);
-					break;
-				case STATISTICS:
-					for (final Statistics statistics : Statistics.values()) {
-						player.setStat(statistics.getInstance(), 0);
-					}
-					break;
-				default:
-					throw new UnsupportedOperationException("The specified save is not supported: " + save);
+	public void clearPlayerState(final Player player, final String state, final Save[] saves)
+			throws DatabaseReadException {
+		if (!PlayerDao.isNewPlayer(player)) {
+			// player.setAge(0);
+			
+			for (final Save save : saves) {
+				switch (save) {
+					case ACHIEVEMENTS:
+						for (final Achievements achievements : Achievements.values()) {
+							player.setStat(achievements.getInstance(), 0);
+						}
+						break;
+					case CONDITIONS:
+						player.removeAllPotionEffects();
+						player.setExhaustion(0);
+						player.setExperience(0);
+						player.setHealth(20);
+						player.setHunger(20);
+						player.setMaxHealth(20);
+						break;
+					case GAMEMODE:
+						player.setMode(GameMode.SURVIVAL);
+						break;
+					case INVENTORY:
+						final PlayerInventory pi = player.getInventory();
+						pi.clearContents();
+						pi.setBootsSlot(null);
+						pi.setChestPlateSlot(null);
+						pi.setHelmetSlot(null);
+						pi.setLeggingsSlot(null);
+						player.getEnderChestInventory().clearContents();
+						break;
+					case LOCATIONS:
+						player.setHome(player.getLocation());
+						player.setSpawnPosition(player.getLocation());
+						break;
+					case PREFIX:
+						player.setPrefix(null);
+						break;
+					case STATISTICS:
+						for (final Statistics statistics : Statistics.values()) {
+							player.setStat(statistics.getInstance(), 0);
+						}
+						break;
+					default:
+						throw new UnsupportedOperationException("The specified save is not supported: " + save);
+				}
 			}
 		}
 		

@@ -48,6 +48,21 @@ public class PlayerDao extends DataAccess {
 		}
 	}
 	
+	public static boolean isNewPlayer(final Player player) throws DatabaseReadException {
+		boolean newPlayer = false;
+		
+		final PlayerDao playerDao = new PlayerDao();
+		final Map<String, Object> filters = new HashMap<String, Object>();
+		filters.put(PlayerDao.UUID, player.getUUIDString());
+		Database.get().load(playerDao, filters);
+		
+		if (!playerDao.hasData()) {
+			newPlayer = true;
+		}
+		
+		return newPlayer;
+	}
+	
 	public PlayerDao() {
 		super("playerstate_player");
 	}
