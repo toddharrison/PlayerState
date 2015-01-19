@@ -28,7 +28,7 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	public static Logman logger;
 	
 	private final PlayerStateConfiguration config;
-	private final IPlayerStateManager manager;
+	private final PlayerStateManager manager;
 	private final PlayerStateCommand command;
 	private final Map<String, WorldEnterHook> respawns;
 	
@@ -47,6 +47,8 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 		logger.info("Enabling " + getName() + " Version " + getVersion());
 		logger.info("Authored by " + getAuthor());
 		
+		manager.start();
+		
 		Canary.hooks().registerListener(this, this);
 		
 		try {
@@ -64,6 +66,7 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 		logger.info("Disabling " + getName());
 		Canary.commands().unregisterCommands(this);
 		Canary.hooks().unregisterPluginListeners(this);
+		manager.stop();
 	}
 	
 	@HookHandler
@@ -127,22 +130,16 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 			if (config.automateOnWorldChange()) {
 				final String state = PlayerState.WORLD_PREFIX + toWorld;
 				final Save[] saves = config.getSaves(state);
-				if (!manager.loadPlayerState(player, state, saves)) {
-					manager.clearPlayerState(player, state, saves);
-				}
+				manager.loadPlayerState(player, state, saves);
 			} else {
 				if (PlayerState.registeredWorlds.containsKey(toWorld)) {
 					final String state = PlayerState.WORLD_PREFIX + toWorld;
 					final Save[] saves = PlayerState.registeredWorlds.get(toWorld);
-					if (!manager.loadPlayerState(player, state, saves)) {
-						manager.clearPlayerState(player, state, saves);
-					}
+					manager.loadPlayerState(player, state, saves);
 				} else {
 					final String state = PlayerState.ALL_WORLDS;
 					final Save[] saves = config.getSaves(state);
-					if (!manager.loadPlayerState(player, state, saves)) {
-						manager.clearPlayerState(player, state, saves);
-					}
+					manager.loadPlayerState(player, state, saves);
 				}
 			}
 		}

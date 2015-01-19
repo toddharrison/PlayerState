@@ -15,9 +15,9 @@ public class PlayerStateCommand implements CommandListener {
 			Save.CONDITIONS, Save.INVENTORY, Save.LOCATIONS
 	};
 	
-	private final IPlayerStateManager manager;
+	private final PlayerStateManager manager;
 	
-	public PlayerStateCommand(final IPlayerStateManager manager) {
+	public PlayerStateCommand(final PlayerStateManager manager) {
 		this.manager = manager;
 	}
 	

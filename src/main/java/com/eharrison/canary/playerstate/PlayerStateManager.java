@@ -1,7 +1,11 @@
 package com.eharrison.canary.playerstate;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.StringTokenizer;
 
 import net.canarymod.Canary;
@@ -24,136 +28,149 @@ import net.canarymod.api.statistics.Statistics;
 import net.canarymod.api.world.position.Location;
 import net.canarymod.database.exceptions.DatabaseReadException;
 import net.canarymod.database.exceptions.DatabaseWriteException;
+import net.visualillusionsent.utils.TaskManager;
 
 import com.eharrison.canary.playerstate.PlayerState.Save;
 
-public class PlayerStateManager implements IPlayerStateManager {
+public class PlayerStateManager {
 	private static final PotionFactory POTION_FACTORY = Canary.factory().getPotionFactory();
 	private static final ItemFactory ITEM_FACTORY = Canary.factory().getItemFactory();
 	private static final NBTFactory NBT_FACTORY = Canary.factory().getNBTFactory();
 	private static final StatisticsFactory STATS_FACTORY = Canary.factory().getStatisticsFactory();
 	
-	@Override
-	public void savePlayerState(final Player player, final String state, final Save[] saves)
-			throws DatabaseWriteException {
-		final PlayerDao playerDao = new PlayerDao();
-		playerDao.uuid = player.getUUIDString();
-		playerDao.state = state;
-		
-		// playerDao.age = player.getAge();
-		// final int fire = player.getFireTicks();
-		// final int invunerable = player.getInvulnerabilityTicks();
-		// final int level = player.getLevel();
-		
-		for (final Save save : saves) {
-			switch (save) {
-				case ACHIEVEMENTS:
-					playerDao.achievements = serializeAchievements(player);
-					break;
-				case CONDITIONS:
-					playerDao.effects = serializePotionEffects(player.getAllActivePotionEffects());
-					playerDao.exhaustion = player.getExhaustionLevel();
-					playerDao.experience = player.getExperience();
-					playerDao.health = player.getHealth();
-					playerDao.hunger = player.getHunger();
-					playerDao.maxHealth = player.getMaxHealth();
-					break;
-				case GAMEMODE:
-					playerDao.gameMode = player.getModeId();
-					break;
-				case INVENTORY:
-					playerDao.enderInventory = serializeInventory(player.getEnderChestInventory());
-					playerDao.inventory = serializeInventory(player.getInventory());
-					playerDao.equipment = serializeEquipment(player.getInventory());
-					break;
-				case LOCATIONS:
-					playerDao.homeLocation = player.getHome().toString();
-					playerDao.location = player.getLocation().toString();
-					playerDao.spawnLocation = player.getSpawnPosition().toString();
-					break;
-				case PREFIX:
-					playerDao.prefix = player.getPrefix();
-					break;
-				case STATISTICS:
-					playerDao.statistics = serializeStatistics(player);
-					break;
-				default:
-					throw new UnsupportedOperationException("The specified save is not supported: " + save);
+	private static final long SAVE_DELAY_SECONDS = 10;
+	private SavePlayerDaoTask task;
+	
+	private final Map<String, Map<String, PlayerDao>> states;
+	private final Collection<PlayerDao> persistDaos;
+	
+	public PlayerStateManager() {
+		states = new HashMap<String, Map<String, PlayerDao>>();
+		persistDaos = new HashSet<PlayerDao>();
+	}
+	
+	public void start() {
+		task = new SavePlayerDaoTask();
+		TaskManager.scheduleContinuedTaskInSeconds(task, SAVE_DELAY_SECONDS, SAVE_DELAY_SECONDS);
+	}
+	
+	public void stop() {
+		TaskManager.removeTask(task);
+		synchronized (persistDaos) {
+			if (!persistDaos.isEmpty()) {
+				for (final PlayerDao playerDao : persistDaos) {
+					try {
+						playerDao.update();
+					} catch (final DatabaseWriteException e) {
+						PlayerStatePlugin.logger.info("Error saving state " + playerDao.state + " for "
+								+ playerDao.uuid);
+					}
+				}
+				persistDaos.clear();
 			}
 		}
-		playerDao.update();
+	}
+	
+	public void savePlayerState(final Player player, final String state, final Save[] saves)
+			throws DatabaseWriteException {
+		Map<String, PlayerDao> playerStateMap = states.get(player.getUUIDString());
+		if (playerStateMap == null) {
+			playerStateMap = new HashMap<String, PlayerDao>();
+			states.put(player.getUUIDString(), playerStateMap);
+		}
+		PlayerDao playerDao = playerStateMap.get(state);
+		if (playerDao == null) {
+			playerDao = new PlayerDao();
+			playerDao.uuid = player.getUUIDString();
+			playerDao.state = state;
+			playerStateMap.put(state, playerDao);
+		}
 		
-		PlayerStatePlugin.logger.info("Saved " + player.getDisplayName() + " at state " + state);
-	}
-	
-	@Override
-	public boolean loadPlayerState(final Player player, final String state, final Save[] save)
-			throws DatabaseReadException {
-		final boolean success = loadPlayerState(player, state, save,
-				PlayerDao.getPlayerDao(player, state));
-		PlayerStatePlugin.logger.info("Loaded " + player.getDisplayName() + " at state " + state + ": "
-				+ success);
-		return success;
-	}
-	
-	@Override
-	public void clearPlayerState(final Player player, final String state, final Save[] saves)
-			throws DatabaseReadException {
-		if (!PlayerDao.isNewPlayer(player)) {
-			// player.setAge(0);
+		synchronized (persistDaos) {
+			// playerDao.age = player.getAge();
+			// final int fire = player.getFireTicks();
+			// final int invunerable = player.getInvulnerabilityTicks();
+			// final int level = player.getLevel();
 			
 			for (final Save save : saves) {
 				switch (save) {
 					case ACHIEVEMENTS:
-						for (final Achievements achievements : Achievements.values()) {
-							player.setStat(achievements.getInstance(), 0);
-						}
+						playerDao.achievements = serializeAchievements(player);
 						break;
 					case CONDITIONS:
-						player.removeAllPotionEffects();
-						player.setExhaustion(0);
-						player.setExperience(0);
-						player.setHealth(20);
-						player.setHunger(20);
-						player.setMaxHealth(20);
+						playerDao.effects = serializePotionEffects(player.getAllActivePotionEffects());
+						playerDao.exhaustion = player.getExhaustionLevel();
+						playerDao.experience = player.getExperience();
+						playerDao.health = player.getHealth();
+						playerDao.hunger = player.getHunger();
+						playerDao.maxHealth = player.getMaxHealth();
 						break;
 					case GAMEMODE:
-						player.setMode(GameMode.SURVIVAL);
+						playerDao.gameMode = player.getModeId();
 						break;
 					case INVENTORY:
-						final PlayerInventory pi = player.getInventory();
-						pi.clearContents();
-						pi.setBootsSlot(null);
-						pi.setChestPlateSlot(null);
-						pi.setHelmetSlot(null);
-						pi.setLeggingsSlot(null);
-						player.getEnderChestInventory().clearContents();
+						playerDao.enderInventory = serializeInventory(player.getEnderChestInventory());
+						playerDao.inventory = serializeInventory(player.getInventory());
+						playerDao.equipment = serializeEquipment(player.getInventory());
 						break;
 					case LOCATIONS:
-						player.setHome(player.getLocation());
-						player.setSpawnPosition(player.getLocation());
+						playerDao.homeLocation = player.getHome().toString();
+						playerDao.location = player.getLocation().toString();
+						playerDao.spawnLocation = player.getSpawnPosition().toString();
 						break;
 					case PREFIX:
-						player.setPrefix(null);
+						playerDao.prefix = player.getPrefix();
 						break;
 					case STATISTICS:
-						for (final Statistics statistics : Statistics.values()) {
-							player.setStat(statistics.getInstance(), 0);
-						}
+						playerDao.statistics = serializeStatistics(player);
 						break;
 					default:
 						throw new UnsupportedOperationException("The specified save is not supported: " + save);
 				}
 			}
+			
+			persistDaos.add(playerDao);
 		}
 		
-		PlayerStatePlugin.logger.info("Cleared " + player.getDisplayName() + " state");
+		PlayerStatePlugin.logger.info("Saved " + player.getDisplayName() + " at state " + state);
 	}
 	
-	@Override
+	public boolean loadPlayerState(final Player player, final String state, final Save[] saves)
+			throws DatabaseReadException {
+		boolean success = true;
+		Map<String, PlayerDao> playerStateMap = states.get(player.getUUIDString());
+		if (playerStateMap == null) {
+			playerStateMap = new HashMap<String, PlayerDao>();
+			states.put(player.getUUIDString(), playerStateMap);
+		}
+		PlayerDao playerDao = playerStateMap.get(state);
+		if (playerDao == null) {
+			playerDao = PlayerDao.getPlayerDao(player, state);
+		}
+		success = loadPlayerState(player, state, saves, playerDao);
+		
+		PlayerStatePlugin.logger.info("Loaded " + player.getDisplayName() + " at state " + state + ": "
+				+ success);
+		
+		if (!success && (!playerStateMap.isEmpty() || !PlayerDao.isNewPlayer(player))) {
+			clearPlayerState(player, state, saves);
+		}
+		
+		return success;
+	}
+	
 	public void restorePlayerLocation(final Player player, final String state)
 			throws DatabaseReadException {
-		final PlayerDao playerDao = PlayerDao.getPlayerDao(player, state);
+		Map<String, PlayerDao> playerStateMap = states.get(player.getUUIDString());
+		if (playerStateMap == null) {
+			playerStateMap = new HashMap<String, PlayerDao>();
+			states.put(player.getUUIDString(), playerStateMap);
+		}
+		PlayerDao playerDao = playerStateMap.get(state);
+		if (playerDao == null) {
+			playerDao = PlayerDao.getPlayerDao(player, state);
+		}
+		
 		player.teleportTo(Location.fromString(playerDao.location));
 	}
 	
@@ -206,6 +223,57 @@ public class PlayerStateManager implements IPlayerStateManager {
 			loaded = true;
 		}
 		return loaded;
+	}
+	
+	private void clearPlayerState(final Player player, final String state, final Save[] saves)
+			throws DatabaseReadException {
+		// player.setAge(0);
+		
+		for (final Save save : saves) {
+			switch (save) {
+				case ACHIEVEMENTS:
+					for (final Achievements achievements : Achievements.values()) {
+						player.setStat(achievements.getInstance(), 0);
+					}
+					break;
+				case CONDITIONS:
+					player.removeAllPotionEffects();
+					player.setExhaustion(0);
+					player.setExperience(0);
+					player.setHealth(20);
+					player.setHunger(20);
+					player.setMaxHealth(20);
+					break;
+				case GAMEMODE:
+					player.setMode(GameMode.SURVIVAL);
+					break;
+				case INVENTORY:
+					final PlayerInventory pi = player.getInventory();
+					pi.clearContents();
+					pi.setBootsSlot(null);
+					pi.setChestPlateSlot(null);
+					pi.setHelmetSlot(null);
+					pi.setLeggingsSlot(null);
+					player.getEnderChestInventory().clearContents();
+					break;
+				case LOCATIONS:
+					player.setHome(player.getLocation());
+					player.setSpawnPosition(player.getLocation());
+					break;
+				case PREFIX:
+					player.setPrefix(null);
+					break;
+				case STATISTICS:
+					for (final Statistics statistics : Statistics.values()) {
+						player.setStat(statistics.getInstance(), 0);
+					}
+					break;
+				default:
+					throw new UnsupportedOperationException("The specified save is not supported: " + save);
+			}
+		}
+		
+		PlayerStatePlugin.logger.info("Cleared " + player.getDisplayName() + " state");
 	}
 	
 	private List<String> serializePotionEffects(final List<PotionEffect> effects) {
@@ -343,6 +411,25 @@ public class PlayerStateManager implements IPlayerStateManager {
 			return item;
 		} else {
 			return null;
+		}
+	}
+	
+	private class SavePlayerDaoTask implements Runnable {
+		@Override
+		public void run() {
+			synchronized (persistDaos) {
+				if (!persistDaos.isEmpty()) {
+					for (final PlayerDao playerDao : persistDaos) {
+						try {
+							playerDao.update();
+						} catch (final DatabaseWriteException e) {
+							PlayerStatePlugin.logger.info("Error saving state " + playerDao.state + " for "
+									+ playerDao.uuid);
+						}
+					}
+					persistDaos.clear();
+				}
+			}
 		}
 	}
 }
