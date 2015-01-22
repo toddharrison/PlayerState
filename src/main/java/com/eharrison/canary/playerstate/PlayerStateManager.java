@@ -62,7 +62,7 @@ public class PlayerStateManager {
 					try {
 						playerDao.update();
 					} catch (final DatabaseWriteException e) {
-						PlayerStatePlugin.logger.info("Error saving state " + playerDao.state + " for "
+						PlayerStatePlugin.LOG.info("Error saving state " + playerDao.state + " for "
 								+ playerDao.uuid);
 					}
 				}
@@ -132,7 +132,7 @@ public class PlayerStateManager {
 			persistDaos.add(playerDao);
 		}
 		
-		PlayerStatePlugin.logger.info("Saved " + player.getDisplayName() + " at state " + state);
+		PlayerStatePlugin.LOG.info("Saved " + player.getDisplayName() + " at state " + state);
 	}
 	
 	public boolean loadPlayerState(final Player player, final String state, final Save[] saves)
@@ -149,7 +149,7 @@ public class PlayerStateManager {
 		}
 		success = loadPlayerState(player, state, saves, playerDao);
 		
-		PlayerStatePlugin.logger.info("Loaded " + player.getDisplayName() + " at state " + state + ": "
+		PlayerStatePlugin.LOG.info("Loaded " + player.getDisplayName() + " at state " + state + ": "
 				+ success);
 		
 		if (!success && (!playerStateMap.isEmpty() || !PlayerDao.isNewPlayer(player))) {
@@ -273,7 +273,7 @@ public class PlayerStateManager {
 			}
 		}
 		
-		PlayerStatePlugin.logger.info("Cleared " + player.getDisplayName() + " state");
+		PlayerStatePlugin.LOG.info("Cleared " + player.getDisplayName() + " state");
 	}
 	
 	private List<String> serializePotionEffects(final List<PotionEffect> effects) {
@@ -423,7 +423,7 @@ public class PlayerStateManager {
 						try {
 							playerDao.update();
 						} catch (final DatabaseWriteException e) {
-							PlayerStatePlugin.logger.info("Error saving state " + playerDao.state + " for "
+							PlayerStatePlugin.LOG.info("Error saving state " + playerDao.state + " for "
 									+ playerDao.uuid);
 						}
 					}

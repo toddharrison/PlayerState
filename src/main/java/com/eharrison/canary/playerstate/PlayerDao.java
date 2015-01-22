@@ -39,6 +39,7 @@ public class PlayerDao extends DataAccess {
 		final Map<String, Object> filters = new HashMap<String, Object>();
 		filters.put(PlayerDao.UUID, player.getUUIDString());
 		filters.put(PlayerDao.STATE, state);
+		
 		Database.get().load(playerDao, filters);
 		
 		if (playerDao.hasData()) {

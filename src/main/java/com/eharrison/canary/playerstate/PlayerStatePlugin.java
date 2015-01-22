@@ -25,7 +25,7 @@ import com.eharrison.canary.playerstate.hook.WorldEnterHook;
 import com.eharrison.canary.playerstate.hook.WorldExitHook;
 
 public class PlayerStatePlugin extends Plugin implements PluginListener {
-	public static Logman logger;
+	public static Logman LOG;
 	
 	private final PlayerStateConfiguration config;
 	private final PlayerStateManager manager;
@@ -33,7 +33,7 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	private final Map<String, WorldEnterHook> respawns;
 	
 	public PlayerStatePlugin() {
-		PlayerStatePlugin.logger = getLogman();
+		PlayerStatePlugin.LOG = getLogman();
 		config = new PlayerStateConfiguration(this);
 		manager = new PlayerStateManager();
 		command = new PlayerStateCommand(manager);
@@ -44,8 +44,8 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	public boolean enable() {
 		boolean success = true;
 		
-		logger.info("Enabling " + getName() + " Version " + getVersion());
-		logger.info("Authored by " + getAuthor());
+		LOG.info("Enabling " + getName() + " Version " + getVersion());
+		LOG.info("Authored by " + getAuthor());
 		
 		manager.start();
 		
@@ -54,7 +54,7 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 		try {
 			Canary.commands().registerCommands(command, this, false);
 		} catch (final CommandDependencyException e) {
-			logger.error("Error registering commands: ", e);
+			LOG.error("Error registering commands: ", e);
 			success = false;
 		}
 		
@@ -63,7 +63,7 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	
 	@Override
 	public void disable() {
-		logger.info("Disabling " + getName());
+		LOG.info("Disabling " + getName());
 		Canary.commands().unregisterCommands(this);
 		Canary.hooks().unregisterPluginListeners(this);
 		manager.stop();
@@ -93,6 +93,13 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 		if (player.getHealth() == 0.0f) {
 			cause = WorldChangeCause.DEATH;
 		}
+		
+		if (cause == WorldChangeCause.DEATH) {
+			LOG.info("*** DEATH ***");
+			LOG.info("PlayerLoc: " + player.getLocation());
+			LOG.info("RespawnLoc: " + respawnLoc);
+		}
+		
 		if (cause == WorldChangeCause.DEATH || respawnLoc.getWorld() != player.getWorld()) {
 			final WorldExitHook exitHook = new WorldExitHook(player, player.getWorld(),
 					player.getLocation(), respawnLoc, cause);
@@ -106,9 +113,10 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 			respawns.put(player.getUUIDString(), new WorldEnterHook(player, world, player.getLocation(),
 					respawnLoc, cause));
 			
-			if (exitHook.getToLocation() != null) {
-				hook.setRespawnLocation(exitHook.getToLocation());
+			if (respawnLoc != null) {
+				hook.setRespawnLocation(respawnLoc);
 			}
+			LOG.info("ExitRespawnLoc: " + respawnLoc);
 		}
 	}
 	
@@ -118,6 +126,7 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 		final WorldEnterHook enterHook = respawns.remove(player.getUUIDString());
 		if (enterHook != null) {
 			enterHook.setToLocation(hook.getLocation());
+			LOG.info("WorldEnterLoc: " + hook.getLocation());
 			Canary.hooks().callHook(enterHook);
 		}
 	}
