@@ -1,5 +1,7 @@
 package com.eharrison.canary.playerstate;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -34,6 +36,13 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	
 	public PlayerStatePlugin() {
 		PlayerStatePlugin.LOG = getLogman();
+		
+		try {
+			JarUtil.exportResource("PlayerState.cfg", new File("config/PlayerState"));
+		} catch (final IOException e) {
+			LOG.warn("Failed to create the default configuration file.", e);
+		}
+		
 		config = new PlayerStateConfiguration(this);
 		manager = new PlayerStateManager();
 		command = new PlayerStateCommand(manager);
