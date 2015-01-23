@@ -93,13 +93,6 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 		if (player.getHealth() == 0.0f) {
 			cause = WorldChangeCause.DEATH;
 		}
-		
-		if (cause == WorldChangeCause.DEATH) {
-			LOG.info("*** DEATH ***");
-			LOG.info("PlayerLoc: " + player.getLocation());
-			LOG.info("RespawnLoc: " + respawnLoc);
-		}
-		
 		if (cause == WorldChangeCause.DEATH || respawnLoc.getWorld() != player.getWorld()) {
 			final WorldExitHook exitHook = new WorldExitHook(player, player.getWorld(),
 					player.getLocation(), respawnLoc, cause);
@@ -116,7 +109,6 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 			if (respawnLoc != null) {
 				hook.setRespawnLocation(respawnLoc);
 			}
-			LOG.info("ExitRespawnLoc: " + respawnLoc);
 		}
 	}
 	
@@ -126,7 +118,6 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 		final WorldEnterHook enterHook = respawns.remove(player.getUUIDString());
 		if (enterHook != null) {
 			enterHook.setToLocation(hook.getLocation());
-			LOG.info("WorldEnterLoc: " + hook.getLocation());
 			Canary.hooks().callHook(enterHook);
 		}
 	}
