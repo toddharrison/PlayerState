@@ -6,6 +6,8 @@ PlayerState is a simple plugin which will save and load player state within Mine
 
 ## New
 
+* Saves default configuration automatically the first time started up.
+* On death the player returns to their bed or spawn in that world.
 * Multithreaded persistence to the Canary database to improve performance and fix dropped hook calls.
 * Player state (and inventory) will now be preserved the first time a player logs into the server.
 
@@ -65,7 +67,3 @@ The maven dependency looks like this, but I don't have a hosting repository just
       <version>0.1.1</version>
       <scope>provided</scope>
     </dependency>
-
-## Known Issues
-
-* Currently incompatible with ExactSpawn plugin.
