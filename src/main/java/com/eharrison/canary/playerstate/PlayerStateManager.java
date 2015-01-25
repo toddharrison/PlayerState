@@ -153,7 +153,7 @@ public class PlayerStateManager {
 				+ success);
 		
 		if (!success && (!playerStateMap.isEmpty() || !PlayerDao.isNewPlayer(player))) {
-			clearPlayerState(player, state, saves);
+			clearPlayerState(player, saves);
 		}
 		
 		return success;
@@ -225,7 +225,7 @@ public class PlayerStateManager {
 		return loaded;
 	}
 	
-	private void clearPlayerState(final Player player, final String state, final Save[] saves)
+	public void clearPlayerState(final Player player, final Save[] saves)
 			throws DatabaseReadException {
 		// player.setAge(0);
 		

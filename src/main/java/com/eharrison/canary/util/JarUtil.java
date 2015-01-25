@@ -1,4 +1,4 @@
-package com.eharrison.canary.playerstate;
+package com.eharrison.canary.util;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -6,14 +6,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
+import net.canarymod.plugin.Plugin;
+
 public final class JarUtil {
-	static public boolean exportResource(final String resourceName, final File targetDir)
-			throws IOException {
+	static public boolean exportResource(final Plugin plugin, final String resourceName,
+			final File targetDir) throws IOException {
 		boolean success = false;
 		
 		final File targetFile = new File(targetDir, resourceName);
 		if (!targetFile.exists()) {
-			final InputStream in = JarUtil.class.getResourceAsStream("/" + resourceName);
+			final InputStream in = plugin.getClass().getResourceAsStream("/" + resourceName);
 			OutputStream out = null;
 			if (in != null) {
 				try {
@@ -27,8 +29,7 @@ public final class JarUtil {
 						out.write(buffer, 0, readBytes);
 					}
 					
-					PlayerStatePlugin.LOG.info("Wrote default PlayerState.cfg to "
-							+ targetFile.getAbsolutePath());
+					plugin.getLogman().info("Wrote default " + resourceName);
 					success = true;
 				} finally {
 					if (in != null) {

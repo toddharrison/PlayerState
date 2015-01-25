@@ -25,6 +25,7 @@ import com.eharrison.canary.playerstate.PlayerState.Save;
 import com.eharrison.canary.playerstate.hook.WorldChangeCause;
 import com.eharrison.canary.playerstate.hook.WorldEnterHook;
 import com.eharrison.canary.playerstate.hook.WorldExitHook;
+import com.eharrison.canary.util.JarUtil;
 
 public class PlayerStatePlugin extends Plugin implements PluginListener {
 	public static Logman LOG;
@@ -38,7 +39,7 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 		PlayerStatePlugin.LOG = getLogman();
 		
 		try {
-			JarUtil.exportResource("PlayerState.cfg", new File("config/PlayerState"));
+			JarUtil.exportResource(this, "PlayerState.cfg", new File("config/PlayerState"));
 		} catch (final IOException e) {
 			LOG.warn("Failed to create the default configuration file.", e);
 		}
@@ -133,23 +134,19 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	
 	@HookHandler
 	public void onWorldEnter(final WorldEnterHook hook) throws DatabaseReadException {
-		if (hook.getCause() != WorldChangeCause.DEATH) {
-			final Player player = hook.getPlayer();
-			final String toWorld = hook.getWorld().getName();
-			if (config.automateOnWorldChange()) {
-				final String state = PlayerState.WORLD_PREFIX + toWorld;
-				final Save[] saves = config.getSaves(state);
-				manager.loadPlayerState(player, state, saves);
+		// PlayerStatePlugin.LOG.info("World Enter");
+		final Player player = hook.getPlayer();
+		final String toWorld = hook.getWorld().getName();
+		
+		if (hook.getFromLocation() == null) {
+			// PlayerStatePlugin.LOG.info("Connected");
+			loadPlayerState(player, toWorld);
+		} else {
+			if (hook.getFromLocation().getWorld() == hook.getWorld()) {
+				// PlayerStatePlugin.LOG.info("Same world");
 			} else {
-				if (PlayerState.registeredWorlds.containsKey(toWorld)) {
-					final String state = PlayerState.WORLD_PREFIX + toWorld;
-					final Save[] saves = PlayerState.registeredWorlds.get(toWorld);
-					manager.loadPlayerState(player, state, saves);
-				} else {
-					final String state = PlayerState.ALL_WORLDS;
-					final Save[] saves = config.getSaves(state);
-					manager.loadPlayerState(player, state, saves);
-				}
+				// PlayerStatePlugin.LOG.info("Different world");
+				loadPlayerState(player, toWorld);
 			}
 		}
 	}
@@ -157,24 +154,86 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	@HookHandler
 	public void onWorldExit(final WorldExitHook hook) throws DatabaseReadException,
 			DatabaseWriteException {
-		if (hook.getCause() != WorldChangeCause.DEATH) {
-			final Player player = hook.getPlayer();
-			final String fromWorld = hook.getWorld().getName();
-			if (config.automateOnWorldChange()) {
-				final String state = PlayerState.WORLD_PREFIX + fromWorld;
-				final Save[] saves = config.getSaves(state);
-				manager.savePlayerState(player, state, saves);
-			} else {
-				if (PlayerState.registeredWorlds.containsKey(fromWorld)) {
-					final String state = PlayerState.WORLD_PREFIX + fromWorld;
-					final Save[] saves = PlayerState.registeredWorlds.get(fromWorld);
-					manager.savePlayerState(player, state, saves);
+		// PlayerStatePlugin.LOG.info("World Exit");
+		final Player player = hook.getPlayer();
+		final String fromWorld = hook.getWorld().getName();
+		
+		if (hook.getToLocation() == null) {
+			// PlayerStatePlugin.LOG.info("Disconnected");
+			savePlayerState(player, fromWorld);
+		} else {
+			if (hook.getToLocation().getWorld() == hook.getWorld()) {
+				// PlayerStatePlugin.LOG.info("Same world");
+				if (hook.getCause() == WorldChangeCause.DEATH) {
+					clearPlayerState(player, fromWorld);
 				} else {
-					final String state = PlayerState.ALL_WORLDS;
-					final Save[] saves = config.getSaves(state);
-					manager.savePlayerState(player, state, saves);
+					// PlayerStatePlugin.LOG.info("Not from death");
 				}
+			} else {
+				// PlayerStatePlugin.LOG.info("Different world");
+				savePlayerState(player, fromWorld);
 			}
 		}
 	}
+	
+	private void loadPlayerState(final Player player, final String toWorld)
+			throws DatabaseReadException {
+		if (config.automateOnWorldChange()) {
+			final String state = PlayerState.WORLD_PREFIX + toWorld;
+			final Save[] saves = config.getSaves(state);
+			manager.loadPlayerState(player, state, saves);
+		} else {
+			if (PlayerState.registeredWorlds.containsKey(toWorld)) {
+				final String state = PlayerState.WORLD_PREFIX + toWorld;
+				final Save[] saves = PlayerState.registeredWorlds.get(toWorld);
+				manager.loadPlayerState(player, state, saves);
+			} else {
+				final String state = PlayerState.ALL_WORLDS;
+				final Save[] saves = config.getSaves(state);
+				manager.loadPlayerState(player, state, saves);
+			}
+		}
+	}
+	
+	private void savePlayerState(final Player player, final String fromWorld)
+			throws DatabaseWriteException {
+		if (config.automateOnWorldChange()) {
+			final String state = PlayerState.WORLD_PREFIX + fromWorld;
+			final Save[] saves = config.getSaves(state);
+			manager.savePlayerState(player, state, saves);
+		} else {
+			if (PlayerState.registeredWorlds.containsKey(fromWorld)) {
+				final String state = PlayerState.WORLD_PREFIX + fromWorld;
+				final Save[] saves = PlayerState.registeredWorlds.get(fromWorld);
+				manager.savePlayerState(player, state, saves);
+			} else {
+				final String state = PlayerState.ALL_WORLDS;
+				final Save[] saves = config.getSaves(state);
+				manager.savePlayerState(player, state, saves);
+			}
+		}
+	}
+	
+	private void clearPlayerState(final Player player, final String fromWorld)
+			throws DatabaseReadException, DatabaseWriteException {
+		if (config.automateOnWorldChange()) {
+			final String state = PlayerState.WORLD_PREFIX + fromWorld;
+			final Save[] saves = config.getSaves(state);
+			manager.clearPlayerState(player, saves);
+			manager.savePlayerState(player, state, saves);
+		} else {
+			if (PlayerState.registeredWorlds.containsKey(fromWorld)) {
+				final String state = PlayerState.WORLD_PREFIX + fromWorld;
+				final Save[] saves = PlayerState.registeredWorlds.get(fromWorld);
+				manager.clearPlayerState(player, saves);
+				manager.savePlayerState(player, state, saves);
+			} else {
+				final String state = PlayerState.ALL_WORLDS;
+				final Save[] saves = config.getSaves(state);
+				manager.clearPlayerState(player, saves);
+				manager.savePlayerState(player, state, saves);
+			}
+		}
+	}
+	
 }
