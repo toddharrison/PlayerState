@@ -6,6 +6,7 @@ PlayerState is a simple plugin which will save and load player state within Mine
 
 ## New
 
+* Handle restore on death correctly in a multiworld context.
 * Saves default configuration automatically the first time started up.
 * On death the player returns to their bed or spawn in that world.
 * Multithreaded persistence to the Canary database to improve performance and fix dropped hook calls.

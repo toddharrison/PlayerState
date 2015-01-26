@@ -3,7 +3,7 @@
 
   <groupId>com.eharrison.canary</groupId>
   <artifactId>player-state</artifactId>
-  <version>0.1.2-SNAPSHOT</version>
+  <version>0.1.2</version>
 
   <name>PlayerState</name>
 
