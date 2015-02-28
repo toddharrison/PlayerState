@@ -1,4 +1,4 @@
-package com.eharrison.canary.util;
+package com.eharrison.canary.playerstate.archive;
 
 import java.io.File;
 import java.io.FileOutputStream;

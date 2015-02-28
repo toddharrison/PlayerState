@@ -1,7 +1,7 @@
 package com.eharrison.canary.playerstate;
 
-import java.io.File;
-import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -9,64 +9,49 @@ import net.canarymod.Canary;
 import net.canarymod.api.entity.living.humanoid.Player;
 import net.canarymod.api.world.World;
 import net.canarymod.api.world.position.Location;
-import net.canarymod.commandsys.CommandDependencyException;
-import net.canarymod.database.exceptions.DatabaseReadException;
-import net.canarymod.database.exceptions.DatabaseWriteException;
+import net.canarymod.api.world.position.Vector3D;
+import net.canarymod.chat.ChatFormat;
 import net.canarymod.hook.HookHandler;
 import net.canarymod.hook.player.ConnectionHook;
 import net.canarymod.hook.player.DisconnectionHook;
 import net.canarymod.hook.player.PlayerRespawnedHook;
 import net.canarymod.hook.player.PlayerRespawningHook;
+import net.canarymod.hook.player.TeleportHook;
 import net.canarymod.logger.Logman;
 import net.canarymod.plugin.Plugin;
 import net.canarymod.plugin.PluginListener;
 
-import com.eharrison.canary.playerstate.PlayerState.Save;
 import com.eharrison.canary.playerstate.hook.WorldChangeCause;
 import com.eharrison.canary.playerstate.hook.WorldEnterHook;
 import com.eharrison.canary.playerstate.hook.WorldExitHook;
-import com.eharrison.canary.util.JarUtil;
 
 public class PlayerStatePlugin extends Plugin implements PluginListener {
+	private static final int MULTIPLAYER_SPAWN_RADIUS = 5;
+	
 	public static Logman LOG;
 	
-	private final PlayerStateConfiguration config;
-	private final PlayerStateManager manager;
-	private final PlayerStateCommand command;
-	private final Map<String, WorldEnterHook> respawns;
+	private final boolean exactSpawn = true;
+	private final Map<String, WorldExitHook> movingPlayerMap;
+	private final boolean manageAllWorlds = false;
+	private final Collection<String> managedWorldList;
 	
 	public PlayerStatePlugin() {
 		PlayerStatePlugin.LOG = getLogman();
+		movingPlayerMap = new HashMap<String, WorldExitHook>();
+		managedWorldList = new ArrayList<String>();
 		
-		try {
-			JarUtil.exportResource(this, "PlayerState.cfg", new File("config/PlayerState"));
-		} catch (final IOException e) {
-			LOG.warn("Failed to create the default configuration file.", e);
-		}
-		
-		config = new PlayerStateConfiguration(this);
-		manager = new PlayerStateManager();
-		command = new PlayerStateCommand(manager);
-		respawns = new HashMap<String, WorldEnterHook>();
+		// TODO
+		managedWorldList.add("default");
 	}
 	
 	@Override
 	public boolean enable() {
-		boolean success = true;
+		final boolean success = true;
 		
 		LOG.info("Enabling " + getName() + " Version " + getVersion());
 		LOG.info("Authored by " + getAuthor());
 		
-		manager.start();
-		
 		Canary.hooks().registerListener(this, this);
-		
-		try {
-			Canary.commands().registerCommands(command, this, false);
-		} catch (final CommandDependencyException e) {
-			LOG.error("Error registering commands: ", e);
-			success = false;
-		}
 		
 		return success;
 	}
@@ -74,166 +59,160 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	@Override
 	public void disable() {
 		LOG.info("Disabling " + getName());
+		
 		Canary.commands().unregisterCommands(this);
 		Canary.hooks().unregisterPluginListeners(this);
-		manager.stop();
 	}
 	
 	@HookHandler
 	public void onConnection(final ConnectionHook hook) {
 		final Player player = hook.getPlayer();
-		Canary.hooks().callHook(
-				new WorldEnterHook(player, player.getWorld(), WorldChangeCause.CONNECTION));
+		final World world = player.getWorld();
+		
+		if (hook.isFirstConnection()) {
+			if (exactSpawn) {
+				final Location loc = Canary.getServer().getDefaultWorld().getSpawnLocation();
+				preloadChunk(loc);
+				player.teleportTo(loc);
+			}
+		}
+		
+		if (isManagedWorld(world)) {
+			hook.getPlayer().message(ChatFormat.GOLD + "Loading your state for world " + world.getName());
+		} else {
+			hook.getPlayer().message(ChatFormat.GOLD + "Loading your global state");
+		}
 	}
 	
 	@HookHandler
 	public void onDisconnection(final DisconnectionHook hook) {
 		final Player player = hook.getPlayer();
-		Canary.hooks().callHook(
-				new WorldExitHook(player, player.getWorld(), player.getLocation(),
-						WorldChangeCause.CONNECTION));
+		final World world = player.getWorld();
+		
+		if (isManagedWorld(world)) {
+			LOG.info("Saving " + player.getName() + " state for world " + world.getName());
+		} else {
+			LOG.info("Saving " + player.getName() + " global state");
+		}
+	}
+	
+	@HookHandler
+	public void onTeleport(final TeleportHook hook) {
+		final Player player = hook.getPlayer();
+		switch (hook.getTeleportReason()) {
+			case RESPAWN:
+				if (exactSpawn) {
+					if (!isBedRespawn(player)) {
+						hook.setCanceled();
+						final Location loc = hook.getDestination().getWorld().getSpawnLocation();
+						preloadChunk(loc);
+						player.teleportTo(loc);
+					} else {
+						preloadChunk(hook.getDestination());
+					}
+				} else {
+					preloadChunk(hook.getDestination());
+				}
+				break;
+			case COMMAND:
+				if (exactSpawn) {
+					hook.setCanceled();
+					final Location loc = hook.getDestination().getWorld().getSpawnLocation();
+					preloadChunk(loc);
+					player.teleportTo(loc);
+				} else {
+					preloadChunk(hook.getDestination());
+				}
+				break;
+			default:
+				// Ignore
+				LOG.debug("Teleport cause: " + hook.getTeleportReason());
+				preloadChunk(hook.getDestination());
+		}
 	}
 	
 	@HookHandler
 	public void onRespawning(final PlayerRespawningHook hook) {
 		final Player player = hook.getPlayer();
-		Location respawnLoc = hook.getRespawnLocation();
+		final Location curLoc = player.getLocation();
+		final Location spawnLoc = hook.getRespawnLocation();
 		
-		WorldChangeCause cause = WorldChangeCause.COMMAND;
-		if (player.getHealth() == 0.0f) {
-			cause = WorldChangeCause.DEATH;
+		final WorldChangeCause reason;
+		if (player.getHealth() == 0) {
+			reason = WorldChangeCause.DEATH;
+		} else {
+			reason = WorldChangeCause.COMMAND;
 		}
-		if (cause == WorldChangeCause.DEATH || respawnLoc.getWorld() != player.getWorld()) {
-			final WorldExitHook exitHook = new WorldExitHook(player, player.getWorld(),
-					player.getLocation(), respawnLoc, cause);
-			Canary.hooks().callHook(exitHook);
-			respawnLoc = exitHook.getToLocation();
-			World world = player.getWorld();
-			if (respawnLoc != null) {
-				world = respawnLoc.getWorld();
-			}
-			
-			respawns.put(player.getUUIDString(), new WorldEnterHook(player, world, player.getLocation(),
-					respawnLoc, cause));
-			
-			if (respawnLoc != null) {
-				hook.setRespawnLocation(respawnLoc);
-			}
+		
+		if (spawnLoc != null && curLoc.getWorld() != spawnLoc.getWorld()) {
+			final WorldExitHook worldExitHook = new WorldExitHook(player, curLoc.getWorld(), curLoc,
+					spawnLoc, reason);
+			Canary.hooks().callHook(worldExitHook);
+			movingPlayerMap.put(player.getUUIDString(), worldExitHook);
 		}
 	}
 	
 	@HookHandler
 	public void onRespawned(final PlayerRespawnedHook hook) {
 		final Player player = hook.getPlayer();
-		final WorldEnterHook enterHook = respawns.remove(player.getUUIDString());
-		if (enterHook != null) {
-			enterHook.setToLocation(hook.getLocation());
-			Canary.hooks().callHook(enterHook);
+		
+		final WorldExitHook worldExitHook = movingPlayerMap.remove(player.getUUIDString());
+		if (worldExitHook != null) {
+			final Location spawnLoc = hook.getLocation();
+			Canary.hooks().callHook(
+					new WorldEnterHook(player, spawnLoc.getWorld(), worldExitHook.getFromLocation(),
+							spawnLoc, worldExitHook.getReason()));
 		}
 	}
 	
 	@HookHandler
-	public void onWorldEnter(final WorldEnterHook hook) throws DatabaseReadException {
-		// PlayerStatePlugin.LOG.info("World Enter");
-		final Player player = hook.getPlayer();
-		final String toWorld = hook.getWorld().getName();
-		
-		if (hook.getFromLocation() == null) {
-			// PlayerStatePlugin.LOG.info("Connected");
-			loadPlayerState(player, toWorld);
-		} else {
-			if (hook.getFromLocation().getWorld() == hook.getWorld()) {
-				// PlayerStatePlugin.LOG.info("Same world");
-			} else {
-				// PlayerStatePlugin.LOG.info("Different world");
-				loadPlayerState(player, toWorld);
-			}
+	public void onWorldEnter(final WorldEnterHook hook) {
+		final World world = hook.getWorld();
+		LOG.info(hook.getPlayer().getName() + " entered " + hook.getWorld().getName());
+		if (isManagedWorld(world)) {
+			hook.getPlayer().message(ChatFormat.GOLD + "Loading your state for world " + world.getName());
+		} else if (isManagedWorld(hook.getFromLocation().getWorld())) {
+			hook.getPlayer().message(ChatFormat.GOLD + "Loading your global state");
 		}
 	}
 	
 	@HookHandler
-	public void onWorldExit(final WorldExitHook hook) throws DatabaseReadException,
-			DatabaseWriteException {
-		// PlayerStatePlugin.LOG.info("World Exit");
-		final Player player = hook.getPlayer();
-		final String fromWorld = hook.getWorld().getName();
+	public void onWorldExit(final WorldExitHook hook) {
+		final World world = hook.getWorld();
+		LOG.info(hook.getPlayer().getName() + " left " + hook.getWorld().getName() + " for "
+				+ hook.getToLocation().getWorld().getName());
 		
-		if (hook.getToLocation() == null) {
-			// PlayerStatePlugin.LOG.info("Disconnected");
-			savePlayerState(player, fromWorld);
-		} else {
-			if (hook.getToLocation().getWorld() == hook.getWorld()) {
-				// PlayerStatePlugin.LOG.info("Same world");
-				if (hook.getCause() == WorldChangeCause.DEATH) {
-					clearPlayerState(player, fromWorld);
-				} else {
-					// PlayerStatePlugin.LOG.info("Not from death");
-				}
-			} else {
-				// PlayerStatePlugin.LOG.info("Different world");
-				savePlayerState(player, fromWorld);
-			}
+		if (hook.getReason() == WorldChangeCause.DEATH) {
+			hook.getPlayer().message(ChatFormat.GOLD + "Applying death penalty");
+		}
+		
+		if (isManagedWorld(world)) {
+			hook.getPlayer().message(ChatFormat.GOLD + "Saving your state for world " + world.getName());
+		} else if (isManagedWorld(hook.getToLocation().getWorld())) {
+			hook.getPlayer().message(ChatFormat.GOLD + "Saving your global state");
 		}
 	}
 	
-	private void loadPlayerState(final Player player, final String toWorld)
-			throws DatabaseReadException {
-		if (config.automateOnWorldChange()) {
-			final String state = PlayerState.WORLD_PREFIX + toWorld;
-			final Save[] saves = config.getSaves(state);
-			manager.loadPlayerState(player, state, saves);
-		} else {
-			if (PlayerState.registeredWorlds.containsKey(toWorld)) {
-				final String state = PlayerState.WORLD_PREFIX + toWorld;
-				final Save[] saves = PlayerState.registeredWorlds.get(toWorld);
-				manager.loadPlayerState(player, state, saves);
-			} else {
-				final String state = PlayerState.ALL_WORLDS;
-				final Save[] saves = config.getSaves(state);
-				manager.loadPlayerState(player, state, saves);
-			}
+	private boolean isBedRespawn(final Player player) {
+		final Vector3D spawn = new Vector3D(player.getSpawnPosition());
+		final Vector3D worldSpawn = new Vector3D(player.getSpawnPosition().getWorld()
+				.getSpawnLocation());
+		spawn.setY(0);
+		worldSpawn.setY(0);
+		if (spawn.getDistance(worldSpawn) > MULTIPLAYER_SPAWN_RADIUS) {
+			return true;
 		}
+		return false;
 	}
 	
-	private void savePlayerState(final Player player, final String fromWorld)
-			throws DatabaseWriteException {
-		if (config.automateOnWorldChange()) {
-			final String state = PlayerState.WORLD_PREFIX + fromWorld;
-			final Save[] saves = config.getSaves(state);
-			manager.savePlayerState(player, state, saves);
-		} else {
-			if (PlayerState.registeredWorlds.containsKey(fromWorld)) {
-				final String state = PlayerState.WORLD_PREFIX + fromWorld;
-				final Save[] saves = PlayerState.registeredWorlds.get(fromWorld);
-				manager.savePlayerState(player, state, saves);
-			} else {
-				final String state = PlayerState.ALL_WORLDS;
-				final Save[] saves = config.getSaves(state);
-				manager.savePlayerState(player, state, saves);
-			}
-		}
+	private boolean isManagedWorld(final World world) {
+		return manageAllWorlds || managedWorldList.contains(world.getName());
 	}
 	
-	private void clearPlayerState(final Player player, final String fromWorld)
-			throws DatabaseReadException, DatabaseWriteException {
-		if (config.automateOnWorldChange()) {
-			final String state = PlayerState.WORLD_PREFIX + fromWorld;
-			final Save[] saves = config.getSaves(state);
-			manager.clearPlayerState(player, saves);
-			manager.savePlayerState(player, state, saves);
-		} else {
-			if (PlayerState.registeredWorlds.containsKey(fromWorld)) {
-				final String state = PlayerState.WORLD_PREFIX + fromWorld;
-				final Save[] saves = PlayerState.registeredWorlds.get(fromWorld);
-				manager.clearPlayerState(player, saves);
-				manager.savePlayerState(player, state, saves);
-			} else {
-				final String state = PlayerState.ALL_WORLDS;
-				final Save[] saves = config.getSaves(state);
-				manager.clearPlayerState(player, saves);
-				manager.savePlayerState(player, state, saves);
-			}
+	private void preloadChunk(final Location loc) {
+		final World world = loc.getWorld();
+		if (!world.isChunkLoaded(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ())) {
+			loc.getWorld().loadChunk(loc);
 		}
 	}
-	
 }

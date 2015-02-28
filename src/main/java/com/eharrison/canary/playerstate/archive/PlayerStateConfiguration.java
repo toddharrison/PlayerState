@@ -1,4 +1,4 @@
-package com.eharrison.canary.playerstate;
+package com.eharrison.canary.playerstate.archive;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -6,7 +6,7 @@ import java.util.List;
 import net.canarymod.config.Configuration;
 import net.visualillusionsent.utils.PropertiesFile;
 
-import com.eharrison.canary.playerstate.PlayerState.Save;
+import com.eharrison.canary.playerstate.archive.PlayerState.Save;
 
 public class PlayerStateConfiguration {
 	private final PropertiesFile cfg;

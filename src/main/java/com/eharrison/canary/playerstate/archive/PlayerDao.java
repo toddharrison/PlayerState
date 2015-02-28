@@ -1,4 +1,4 @@
-package com.eharrison.canary.playerstate;
+package com.eharrison.canary.playerstate.archive;
 
 import java.util.HashMap;
 import java.util.List;
