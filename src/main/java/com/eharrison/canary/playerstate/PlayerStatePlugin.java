@@ -207,10 +207,10 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 		final String fromState = getState(hook.getFromLocation().getWorld());
 		final String toState = getState(hook.getToLocation().getWorld());
 		
-		if (hook.getReason() == WorldChangeCause.DEATH) {
-			// TODO
-			player.message(ChatFormat.GOLD + "Applying death penalty to state " + fromState);
-		}
+		// // TODO is this already working?
+		// if (hook.getReason() == WorldChangeCause.DEATH) {
+		// player.message(ChatFormat.GOLD + "Applying death penalty to state " + fromState);
+		// }
 		
 		if (!toState.equals(fromState)) {
 			manager.savePlayerState(player, fromState, getSaves(fromState));
