@@ -53,7 +53,7 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 		}
 		
 		config = new PlayerStateConfiguration(this);
-		manager = new PlayerStateManager();
+		manager = new PlayerStateManager(this);
 		command = new PlayerStateCommand(manager);
 	}
 	
@@ -90,7 +90,7 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	@HookHandler
 	public void onConnection(final ConnectionHook hook) throws DatabaseReadException {
 		final Player player = hook.getPlayer();
-		final World world = player.getWorld();
+		final String state = getState(player.getWorld());
 		
 		if (hook.isFirstConnection()) {
 			if (config.exactSpawn()) {
@@ -99,48 +99,23 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 				player.setSpawnPosition(loc);
 				player.setHome(loc);
 				player.teleportTo(loc);
+				player.message(ChatFormat.GOLD + "Entering state " + state);
 			}
 		}
 		
-		if (isManagedWorld(world)) {
-			final String state = PlayerState.WORLD_PREFIX + world.getName();
-			final Save[] saves = getSaves(world, state);
-			if (manager.loadPlayerState(player, state, saves)) {
-				manager.restorePlayerLocation(player, state);
-				player.message(ChatFormat.GOLD + "Loaded world state for " + world.getName());
-			}
-		} else {
-			final String state = PlayerState.ALL_WORLDS;
-			final Save[] saves = config.getSaves(state);
-			if (manager.loadPlayerState(player, state, saves)) {
-				manager.restorePlayerLocation(player, state);
-				player.message(ChatFormat.GOLD + "Loaded your global state");
-			}
+		if (manager.loadPlayerState(player, state, getSaves(state))) {
+			manager.restorePlayerLocation(player, state);
+			player.message(ChatFormat.GOLD + "Loaded state " + state);
 		}
 	}
 	
 	@HookHandler
 	public void onDisconnection(final DisconnectionHook hook) throws DatabaseWriteException {
 		final Player player = hook.getPlayer();
-		final World world = player.getWorld();
+		final String state = getState(player.getWorld());
 		
-		if (isManagedWorld(world)) {
-			final String state = PlayerState.WORLD_PREFIX + world.getName();
-			final Save[] saves = getSaves(world, state);
-			manager.savePlayerState(player, state, saves);
-			player.message(ChatFormat.GOLD + "Saved world state for " + world.getName());
-		} else {
-			final String state = PlayerState.ALL_WORLDS;
-			final Save[] saves = config.getSaves(state);
-			manager.savePlayerState(player, state, saves);
-			player.message(ChatFormat.GOLD + "Saved your global state");
-		}
-		
-		if (isManagedWorld(world)) {
-			LOG.info("Saving " + player.getName() + " state for world " + world.getName());
-		} else {
-			LOG.info("Saving " + player.getName() + " global state");
-		}
+		manager.savePlayerState(player, state, getSaves(state));
+		LOG.info("Saved state " + state + " for " + player.getName());
 	}
 	
 	@HookHandler
@@ -214,43 +189,33 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	
 	@HookHandler
 	public void onWorldEnter(final WorldEnterHook hook) throws DatabaseReadException {
-		final World world = hook.getWorld();
 		final Player player = hook.getPlayer();
-		if (isManagedWorld(world)) {
-			final String state = PlayerState.WORLD_PREFIX + world.getName();
-			final Save[] saves = getSaves(world, state);
-			if (manager.loadPlayerState(player, state, saves)) {
-				hook.getPlayer().message(ChatFormat.GOLD + "Loaded world state for " + world.getName());
-			}
-		} else if (isManagedWorld(hook.getFromLocation().getWorld())) {
-			final String state = PlayerState.ALL_WORLDS;
-			final Save[] saves = config.getSaves(state);
-			if (manager.loadPlayerState(player, state, saves)) {
-				hook.getPlayer().message(ChatFormat.GOLD + "Loaded your global state");
+		final String fromState = getState(hook.getFromLocation().getWorld());
+		final String toState = getState(hook.getToLocation().getWorld());
+		
+		if (!toState.equals(fromState)) {
+			if (manager.loadPlayerState(player, toState, getSaves(toState))) {
+				player.message(ChatFormat.GOLD + "Loaded state " + toState);
+			} else {
+				player.message(ChatFormat.GOLD + "Entering state " + toState);
 			}
 		}
 	}
 	
 	@HookHandler
 	public void onWorldExit(final WorldExitHook hook) throws DatabaseWriteException {
-		final World world = hook.getWorld();
 		final Player player = hook.getPlayer();
+		final String fromState = getState(hook.getFromLocation().getWorld());
+		final String toState = getState(hook.getToLocation().getWorld());
 		
 		if (hook.getReason() == WorldChangeCause.DEATH) {
 			// TODO
-			player.message(ChatFormat.GOLD + "Applying death penalty");
+			player.message(ChatFormat.GOLD + "Applying death penalty to state " + fromState);
 		}
 		
-		if (isManagedWorld(world)) {
-			final String state = PlayerState.WORLD_PREFIX + world.getName();
-			final Save[] saves = getSaves(world, state);
-			manager.savePlayerState(player, state, saves);
-			player.message(ChatFormat.GOLD + "Saved world state for " + world.getName());
-		} else {
-			final String state = PlayerState.ALL_WORLDS;
-			final Save[] saves = config.getSaves(state);
-			manager.savePlayerState(player, state, saves);
-			player.message(ChatFormat.GOLD + "Saved your global state");
+		if (!toState.equals(fromState)) {
+			manager.savePlayerState(player, fromState, getSaves(fromState));
+			player.message(ChatFormat.GOLD + "Saved state " + fromState);
 		}
 	}
 	
@@ -266,13 +231,16 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 		return false;
 	}
 	
-	private boolean isManagedWorld(final World world) {
-		return config.automateOnWorldChange()
-				|| PlayerState.registeredWorlds.containsKey(world.getName());
+	private String getState(final World world) {
+		String state = PlayerState.managedWorldStates.get(world.getName());
+		if (state == null) {
+			state = config.getState(world);
+		}
+		return state;
 	}
 	
-	private Save[] getSaves(final World world, final String state) {
-		Save[] saves = PlayerState.registeredWorlds.get(world.getName());
+	private Save[] getSaves(final String state) {
+		Save[] saves = PlayerState.managedStateSaves.get(state);
 		if (saves == null) {
 			saves = config.getSaves(state);
 		}

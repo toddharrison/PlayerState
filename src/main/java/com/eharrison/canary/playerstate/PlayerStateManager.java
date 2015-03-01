@@ -28,6 +28,7 @@ import net.canarymod.api.statistics.Statistics;
 import net.canarymod.api.world.position.Location;
 import net.canarymod.database.exceptions.DatabaseReadException;
 import net.canarymod.database.exceptions.DatabaseWriteException;
+import net.canarymod.tasks.ServerTask;
 import net.visualillusionsent.utils.TaskManager;
 
 import com.eharrison.canary.playerstate.PlayerState.Save;
@@ -41,10 +42,12 @@ public class PlayerStateManager {
 	private static final long SAVE_DELAY_SECONDS = 10;
 	private SavePlayerDaoTask task;
 	
+	private final PlayerStatePlugin plugin;
 	private final Map<String, Map<String, PlayerDao>> states;
 	private final Collection<PlayerDao> persistDaos;
 	
-	public PlayerStateManager() {
+	public PlayerStateManager(final PlayerStatePlugin plugin) {
+		this.plugin = plugin;
 		states = new HashMap<String, Map<String, PlayerDao>>();
 		persistDaos = new HashSet<PlayerDao>();
 	}
@@ -179,7 +182,13 @@ public class PlayerStateManager {
 			playerDao = PlayerDao.getPlayerDao(player, state);
 		}
 		
-		player.teleportTo(Location.fromString(playerDao.location));
+		final Location loc = Location.fromString(playerDao.location);
+		Canary.getServer().addSynchronousTask(new ServerTask(plugin, 0) {
+			@Override
+			public void run() {
+				player.teleportTo(loc);
+			}
+		});
 	}
 	
 	private boolean loadPlayerState(final Player player, final String state, final Save[] saves,

@@ -3,6 +3,7 @@ package com.eharrison.canary.playerstate;
 import java.util.ArrayList;
 import java.util.List;
 
+import net.canarymod.api.world.World;
 import net.canarymod.config.Configuration;
 import net.visualillusionsent.utils.PropertiesFile;
 
@@ -19,8 +20,19 @@ public class PlayerStateConfiguration {
 		return cfg.getBoolean("exactSpawn");
 	}
 	
-	public boolean automateOnWorldChange() {
-		return cfg.getBoolean("automate", true);
+	public String getDefaultState() {
+		return cfg.getString("state.global", PlayerState.ALL_WORLDS);
+	}
+	
+	public String getState(final World world) {
+		String state = null;
+		final String key = "state.world." + world.getName();
+		if (cfg.containsKey(key)) {
+			state = cfg.getString(key);
+		} else {
+			state = getDefaultState();
+		}
+		return state;
 	}
 	
 	public Save[] getSaves(final String state) {
