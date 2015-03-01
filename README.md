@@ -18,6 +18,33 @@ This plugin can save player state information like:
 * Achievements
 * And more...
 
+## Installation
+
+1. Install the plugin.
+2. Startup the server which will create the default configuration file `PlayerState.cfg`.
+3. Change the configuration file as you would.
+4. Restart the server and you're ready to go.
+
+## Migration from 0.1.X
+
+### Easy Way
+
+You will lose existing states, including inventories, and when players join their current inventory will be used as the new inventory baseline for the starting state.
+
+1. Delete the PlayerState database `playerstate_player.xml` and configuration `PlayerState.cfg`.
+2. Install version 0.2.x of the Plugin.
+3. Configure your worlds in the `PlayerState.cfg`.
+
+### Hard Way
+
+1. Copy the PlayerState database `playerstate_player.xml` and configuration `PlayerState.cfg` to a backup location.
+2. Delete the configuration `PlayerState.cfg`.
+3. Install version 0.2.x of the Plugin.
+4. Startup the server, which will create the new `PlayerState.cfg` file and shut it down.
+5. Setup the configuration for your server, setting the world state for any existing worlds to the original state value from 0.1.X (i.e. "WORLD_<world_name>", reference the old XML as a guide).
+6. Hope for the best and if a state is messed up change the state id or properties in the XML database manually based on the old XML.
+7. Contact me if you need assistance.
+
 ## Configuration
 
 ### Exact Spawn
