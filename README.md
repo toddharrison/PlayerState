@@ -6,7 +6,7 @@ PlayerState is a simple plugin which will save and load player state within Mine
 
 ## Features
 
-This plugin can save information like:
+This plugin can save player state information like:
 
 * Conditions like health, hunger, experience, etc.
 * Effects from potions
@@ -105,3 +105,10 @@ The maven dependency looks like this, but I don't have a hosting repository just
       <version>0.2.0</version>
       <scope>provided</scope>
     </dependency>
+
+## FAQ
+
+1. Player spawn and home are set to the spawn location when a player enters a world for the first time.
+2. When first entering a world, sometimes Minecraft will create the world spawn underground. This means that both your home and spawn would result in you suffocating. To correct this, change the world spawn to a location above ground using `/setspawn` and set your home to a new location using `/sethome`. Thereafter, other players will not have the same issue.
+3. Under some conditions players will return to the location of their bed even if it was destroyed. This has to do with which world the bed is created in and where the player died. There is not a solution to this at this point.
+4. If the server starts skipping ticks and `/spawn <world>` seems to stop working, log out and back in. This seems to be a Minecraft client bug. 

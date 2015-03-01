@@ -44,7 +44,6 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	public PlayerStatePlugin() {
 		PlayerStatePlugin.LOG = getLogman();
 		movingPlayerMap = new HashMap<String, WorldExitHook>();
-		// managedWorldList = new ArrayList<String>();
 		
 		try {
 			JarUtil.exportResource(this, "PlayerState.cfg", new File("config/PlayerState"));

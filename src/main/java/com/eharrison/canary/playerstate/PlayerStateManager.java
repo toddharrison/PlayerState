@@ -119,14 +119,6 @@ public class PlayerStateManager {
 					case LOCATIONS:
 						playerDao.homeLocation = player.getHome().toString();
 						playerDao.spawnLocation = player.getSpawnPosition().toString();
-						// final Location defaultSpawn =
-						// Canary.getServer().getDefaultWorld().getSpawnLocation();
-						// if (!player.getHome().equals(defaultSpawn)) {
-						// playerDao.homeLocation = player.getHome().toString();
-						// }
-						// if (!player.getSpawnPosition().equals(defaultSpawn)) {
-						// playerDao.spawnLocation = player.getSpawnPosition().toString();
-						// }
 						playerDao.location = player.getLocation().toString();
 						break;
 					case PREFIX:
@@ -226,18 +218,6 @@ public class PlayerStateManager {
 					case LOCATIONS:
 						player.setHome(Location.fromString(playerDao.homeLocation));
 						player.setSpawnPosition(Location.fromString(playerDao.spawnLocation));
-						// TODO remove
-						// final Location defaultSpawn = player.getLocation().getWorld().getSpawnLocation();
-						// if (playerDao.homeLocation != null && !playerDao.homeLocation.equals("null")) {
-						// player.setHome(Location.fromString(playerDao.homeLocation));
-						// } else {
-						// player.setHome(defaultSpawn);
-						// }
-						// if (playerDao.spawnLocation != null && !playerDao.spawnLocation.equals("null")) {
-						// player.setSpawnPosition(Location.fromString(playerDao.spawnLocation));
-						// } else {
-						// player.setSpawnPosition(defaultSpawn);
-						// }
 						break;
 					case PREFIX:
 						player.setPrefix(playerDao.prefix);
