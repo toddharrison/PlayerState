@@ -1,4 +1,4 @@
-package com.eharrison.canary.playerstate.archive;
+package com.eharrison.canary.playerstate;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -30,7 +30,7 @@ import net.canarymod.database.exceptions.DatabaseReadException;
 import net.canarymod.database.exceptions.DatabaseWriteException;
 import net.visualillusionsent.utils.TaskManager;
 
-import com.eharrison.canary.playerstate.archive.PlayerState.Save;
+import com.eharrison.canary.playerstate.PlayerState.Save;
 
 public class PlayerStateManager {
 	private static final PotionFactory POTION_FACTORY = Canary.factory().getPotionFactory();
@@ -114,19 +114,16 @@ public class PlayerStateManager {
 						playerDao.equipment = serializeEquipment(player.getInventory());
 						break;
 					case LOCATIONS:
-						
-						System.out.println("save home: " + player.getHome());
-						System.out.println("save location: " + player.getLocation());
-						System.out.println("save spawn: " + player.getSpawnPosition());
-						
-						final Location defaultSpawn = Canary.getServer().getDefaultWorld().getSpawnLocation();
-						
-						if (!player.getHome().equals(defaultSpawn)) {
-							playerDao.homeLocation = player.getHome().toString();
-						}
-						if (!player.getSpawnPosition().equals(defaultSpawn)) {
-							playerDao.spawnLocation = player.getSpawnPosition().toString();
-						}
+						playerDao.homeLocation = player.getHome().toString();
+						playerDao.spawnLocation = player.getSpawnPosition().toString();
+						// final Location defaultSpawn =
+						// Canary.getServer().getDefaultWorld().getSpawnLocation();
+						// if (!player.getHome().equals(defaultSpawn)) {
+						// playerDao.homeLocation = player.getHome().toString();
+						// }
+						// if (!player.getSpawnPosition().equals(defaultSpawn)) {
+						// playerDao.spawnLocation = player.getSpawnPosition().toString();
+						// }
 						playerDao.location = player.getLocation().toString();
 						break;
 					case PREFIX:
@@ -218,23 +215,20 @@ public class PlayerStateManager {
 						restoreEquipment(playerDao.equipment, player.getInventory());
 						break;
 					case LOCATIONS:
-						
-						System.out.println("load home: " + player.getHome());
-						System.out.println("load location: " + player.getLocation());
-						System.out.println("load spawn: " + player.getSpawnPosition());
-						
-						final Location defaultSpawn = Canary.getServer().getDefaultWorld().getSpawnLocation();
-						
-						if (playerDao.homeLocation != null && !playerDao.homeLocation.equals("null")) {
-							player.setHome(Location.fromString(playerDao.homeLocation));
-						} else {
-							player.setHome(defaultSpawn);
-						}
-						if (playerDao.spawnLocation != null && !playerDao.spawnLocation.equals("null")) {
-							player.setSpawnPosition(Location.fromString(playerDao.spawnLocation));
-						} else {
-							player.setSpawnPosition(defaultSpawn);
-						}
+						player.setHome(Location.fromString(playerDao.homeLocation));
+						player.setSpawnPosition(Location.fromString(playerDao.spawnLocation));
+						// TODO remove
+						// final Location defaultSpawn = player.getLocation().getWorld().getSpawnLocation();
+						// if (playerDao.homeLocation != null && !playerDao.homeLocation.equals("null")) {
+						// player.setHome(Location.fromString(playerDao.homeLocation));
+						// } else {
+						// player.setHome(defaultSpawn);
+						// }
+						// if (playerDao.spawnLocation != null && !playerDao.spawnLocation.equals("null")) {
+						// player.setSpawnPosition(Location.fromString(playerDao.spawnLocation));
+						// } else {
+						// player.setSpawnPosition(defaultSpawn);
+						// }
 						break;
 					case PREFIX:
 						player.setPrefix(playerDao.prefix);
@@ -283,15 +277,9 @@ public class PlayerStateManager {
 					player.getEnderChestInventory().clearContents();
 					break;
 				case LOCATIONS:
-					
-					// System.out.println("clear home: " + player.getHome());
-					// System.out.println("clear location: " + player.getLocation());
-					// System.out.println("clear spawn: " + player.getSpawnPosition());
-					//
-					// final Location defaultSpawn = Canary.getServer().getDefaultWorld().getSpawnLocation();
-					//
-					// player.setHome(defaultSpawn);
-					// player.setSpawnPosition(defaultSpawn);
+					final Location defaultSpawn = player.getWorld().getSpawnLocation();
+					player.setHome(defaultSpawn);
+					player.setSpawnPosition(defaultSpawn);
 					break;
 				case PREFIX:
 					player.setPrefix(null);

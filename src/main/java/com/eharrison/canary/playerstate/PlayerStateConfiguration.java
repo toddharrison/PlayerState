@@ -1,4 +1,4 @@
-package com.eharrison.canary.playerstate.archive;
+package com.eharrison.canary.playerstate;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -6,7 +6,7 @@ import java.util.List;
 import net.canarymod.config.Configuration;
 import net.visualillusionsent.utils.PropertiesFile;
 
-import com.eharrison.canary.playerstate.archive.PlayerState.Save;
+import com.eharrison.canary.playerstate.PlayerState.Save;
 
 public class PlayerStateConfiguration {
 	private final PropertiesFile cfg;
@@ -15,8 +15,12 @@ public class PlayerStateConfiguration {
 		cfg = Configuration.getPluginConfig(plugin);
 	}
 	
+	public boolean exactSpawn() {
+		return cfg.getBoolean("exactSpawn");
+	}
+	
 	public boolean automateOnWorldChange() {
-		return cfg.getBoolean("automate", false);
+		return cfg.getBoolean("automate", true);
 	}
 	
 	public Save[] getSaves(final String state) {

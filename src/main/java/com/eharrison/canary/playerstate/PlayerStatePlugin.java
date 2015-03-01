@@ -1,7 +1,7 @@
 package com.eharrison.canary.playerstate;
 
-import java.util.ArrayList;
-import java.util.Collection;
+import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -11,6 +11,9 @@ import net.canarymod.api.world.World;
 import net.canarymod.api.world.position.Location;
 import net.canarymod.api.world.position.Vector3D;
 import net.canarymod.chat.ChatFormat;
+import net.canarymod.commandsys.CommandDependencyException;
+import net.canarymod.database.exceptions.DatabaseReadException;
+import net.canarymod.database.exceptions.DatabaseWriteException;
 import net.canarymod.hook.HookHandler;
 import net.canarymod.hook.player.ConnectionHook;
 import net.canarymod.hook.player.DisconnectionHook;
@@ -21,37 +24,56 @@ import net.canarymod.logger.Logman;
 import net.canarymod.plugin.Plugin;
 import net.canarymod.plugin.PluginListener;
 
+import com.eharrison.canary.playerstate.PlayerState.Save;
 import com.eharrison.canary.playerstate.hook.WorldChangeCause;
 import com.eharrison.canary.playerstate.hook.WorldEnterHook;
 import com.eharrison.canary.playerstate.hook.WorldExitHook;
+import com.eharrison.canary.util.JarUtil;
 
 public class PlayerStatePlugin extends Plugin implements PluginListener {
 	private static final int MULTIPLAYER_SPAWN_RADIUS = 5;
 	
 	public static Logman LOG;
 	
-	private final boolean exactSpawn = true;
+	private final PlayerStateConfiguration config;
+	private final PlayerStateManager manager;
+	private final PlayerStateCommand command;
+	
 	private final Map<String, WorldExitHook> movingPlayerMap;
-	private final boolean manageAllWorlds = false;
-	private final Collection<String> managedWorldList;
 	
 	public PlayerStatePlugin() {
 		PlayerStatePlugin.LOG = getLogman();
 		movingPlayerMap = new HashMap<String, WorldExitHook>();
-		managedWorldList = new ArrayList<String>();
+		// managedWorldList = new ArrayList<String>();
 		
-		// TODO
-		managedWorldList.add("default");
+		try {
+			JarUtil.exportResource(this, "PlayerState.cfg", new File("config/PlayerState"));
+		} catch (final IOException e) {
+			LOG.warn("Failed to create the default configuration file.", e);
+		}
+		
+		config = new PlayerStateConfiguration(this);
+		manager = new PlayerStateManager();
+		command = new PlayerStateCommand(manager);
 	}
 	
 	@Override
 	public boolean enable() {
-		final boolean success = true;
+		boolean success = true;
 		
 		LOG.info("Enabling " + getName() + " Version " + getVersion());
 		LOG.info("Authored by " + getAuthor());
 		
+		manager.start();
+		
 		Canary.hooks().registerListener(this, this);
+		
+		try {
+			Canary.commands().registerCommands(command, this, false);
+		} catch (final CommandDependencyException e) {
+			LOG.error("Error registering commands: ", e);
+			success = false;
+		}
 		
 		return success;
 	}
@@ -62,32 +84,57 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 		
 		Canary.commands().unregisterCommands(this);
 		Canary.hooks().unregisterPluginListeners(this);
+		manager.stop();
 	}
 	
 	@HookHandler
-	public void onConnection(final ConnectionHook hook) {
+	public void onConnection(final ConnectionHook hook) throws DatabaseReadException {
 		final Player player = hook.getPlayer();
 		final World world = player.getWorld();
 		
 		if (hook.isFirstConnection()) {
-			if (exactSpawn) {
+			if (config.exactSpawn()) {
 				final Location loc = Canary.getServer().getDefaultWorld().getSpawnLocation();
 				preloadChunk(loc);
+				player.setSpawnPosition(loc);
+				player.setHome(loc);
 				player.teleportTo(loc);
 			}
 		}
 		
 		if (isManagedWorld(world)) {
-			hook.getPlayer().message(ChatFormat.GOLD + "Loading your state for world " + world.getName());
+			final String state = PlayerState.WORLD_PREFIX + world.getName();
+			final Save[] saves = getSaves(world, state);
+			if (manager.loadPlayerState(player, state, saves)) {
+				manager.restorePlayerLocation(player, state);
+				player.message(ChatFormat.GOLD + "Loaded world state for " + world.getName());
+			}
 		} else {
-			hook.getPlayer().message(ChatFormat.GOLD + "Loading your global state");
+			final String state = PlayerState.ALL_WORLDS;
+			final Save[] saves = config.getSaves(state);
+			if (manager.loadPlayerState(player, state, saves)) {
+				manager.restorePlayerLocation(player, state);
+				player.message(ChatFormat.GOLD + "Loaded your global state");
+			}
 		}
 	}
 	
 	@HookHandler
-	public void onDisconnection(final DisconnectionHook hook) {
+	public void onDisconnection(final DisconnectionHook hook) throws DatabaseWriteException {
 		final Player player = hook.getPlayer();
 		final World world = player.getWorld();
+		
+		if (isManagedWorld(world)) {
+			final String state = PlayerState.WORLD_PREFIX + world.getName();
+			final Save[] saves = getSaves(world, state);
+			manager.savePlayerState(player, state, saves);
+			player.message(ChatFormat.GOLD + "Saved world state for " + world.getName());
+		} else {
+			final String state = PlayerState.ALL_WORLDS;
+			final Save[] saves = config.getSaves(state);
+			manager.savePlayerState(player, state, saves);
+			player.message(ChatFormat.GOLD + "Saved your global state");
+		}
 		
 		if (isManagedWorld(world)) {
 			LOG.info("Saving " + player.getName() + " state for world " + world.getName());
@@ -101,7 +148,7 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 		final Player player = hook.getPlayer();
 		switch (hook.getTeleportReason()) {
 			case RESPAWN:
-				if (exactSpawn) {
+				if (config.exactSpawn()) {
 					if (!isBedRespawn(player)) {
 						hook.setCanceled();
 						final Location loc = hook.getDestination().getWorld().getSpawnLocation();
@@ -115,7 +162,7 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 				}
 				break;
 			case COMMAND:
-				if (exactSpawn) {
+				if (config.exactSpawn()) {
 					hook.setCanceled();
 					final Location loc = hook.getDestination().getWorld().getSpawnLocation();
 					preloadChunk(loc);
@@ -166,30 +213,44 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	}
 	
 	@HookHandler
-	public void onWorldEnter(final WorldEnterHook hook) {
+	public void onWorldEnter(final WorldEnterHook hook) throws DatabaseReadException {
 		final World world = hook.getWorld();
-		LOG.info(hook.getPlayer().getName() + " entered " + hook.getWorld().getName());
+		final Player player = hook.getPlayer();
 		if (isManagedWorld(world)) {
-			hook.getPlayer().message(ChatFormat.GOLD + "Loading your state for world " + world.getName());
+			final String state = PlayerState.WORLD_PREFIX + world.getName();
+			final Save[] saves = getSaves(world, state);
+			if (manager.loadPlayerState(player, state, saves)) {
+				hook.getPlayer().message(ChatFormat.GOLD + "Loaded world state for " + world.getName());
+			}
 		} else if (isManagedWorld(hook.getFromLocation().getWorld())) {
-			hook.getPlayer().message(ChatFormat.GOLD + "Loading your global state");
+			final String state = PlayerState.ALL_WORLDS;
+			final Save[] saves = config.getSaves(state);
+			if (manager.loadPlayerState(player, state, saves)) {
+				hook.getPlayer().message(ChatFormat.GOLD + "Loaded your global state");
+			}
 		}
 	}
 	
 	@HookHandler
-	public void onWorldExit(final WorldExitHook hook) {
+	public void onWorldExit(final WorldExitHook hook) throws DatabaseWriteException {
 		final World world = hook.getWorld();
-		LOG.info(hook.getPlayer().getName() + " left " + hook.getWorld().getName() + " for "
-				+ hook.getToLocation().getWorld().getName());
+		final Player player = hook.getPlayer();
 		
 		if (hook.getReason() == WorldChangeCause.DEATH) {
-			hook.getPlayer().message(ChatFormat.GOLD + "Applying death penalty");
+			// TODO
+			player.message(ChatFormat.GOLD + "Applying death penalty");
 		}
 		
 		if (isManagedWorld(world)) {
-			hook.getPlayer().message(ChatFormat.GOLD + "Saving your state for world " + world.getName());
-		} else if (isManagedWorld(hook.getToLocation().getWorld())) {
-			hook.getPlayer().message(ChatFormat.GOLD + "Saving your global state");
+			final String state = PlayerState.WORLD_PREFIX + world.getName();
+			final Save[] saves = getSaves(world, state);
+			manager.savePlayerState(player, state, saves);
+			player.message(ChatFormat.GOLD + "Saved world state for " + world.getName());
+		} else {
+			final String state = PlayerState.ALL_WORLDS;
+			final Save[] saves = config.getSaves(state);
+			manager.savePlayerState(player, state, saves);
+			player.message(ChatFormat.GOLD + "Saved your global state");
 		}
 	}
 	
@@ -206,7 +267,16 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	}
 	
 	private boolean isManagedWorld(final World world) {
-		return manageAllWorlds || managedWorldList.contains(world.getName());
+		return config.automateOnWorldChange()
+				|| PlayerState.registeredWorlds.containsKey(world.getName());
+	}
+	
+	private Save[] getSaves(final World world, final String state) {
+		Save[] saves = PlayerState.registeredWorlds.get(world.getName());
+		if (saves == null) {
+			saves = config.getSaves(state);
+		}
+		return saves;
 	}
 	
 	private void preloadChunk(final Location loc) {
