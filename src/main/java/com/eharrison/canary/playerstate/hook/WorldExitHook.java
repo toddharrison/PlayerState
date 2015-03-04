@@ -9,7 +9,7 @@ public class WorldExitHook extends Hook {
 	private final Player player;
 	private final World world;
 	private final Location fromLocation;
-	private final Location toLocation;
+	private Location toLocation;
 	private final WorldChangeCause reason;
 	
 	public WorldExitHook(final Player player, final World world, final Location fromLocation,
@@ -35,6 +35,10 @@ public class WorldExitHook extends Hook {
 	
 	public Location getToLocation() {
 		return toLocation;
+	}
+	
+	public void setToLocation(final Location toLocation) {
+		this.toLocation = toLocation;
 	}
 	
 	public WorldChangeCause getReason() {

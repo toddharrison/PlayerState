@@ -28,7 +28,6 @@ import net.canarymod.api.statistics.Statistics;
 import net.canarymod.api.world.position.Location;
 import net.canarymod.database.exceptions.DatabaseReadException;
 import net.canarymod.database.exceptions.DatabaseWriteException;
-import net.canarymod.tasks.ServerTask;
 import net.visualillusionsent.utils.TaskManager;
 
 import com.eharrison.canary.playerstate.PlayerState.Save;
@@ -162,7 +161,7 @@ public class PlayerStateManager {
 		return success;
 	}
 	
-	public void restorePlayerLocation(final Player player, final String state)
+	public Location getPlayerReturnLocation(final Player player, final String state)
 			throws DatabaseReadException {
 		Map<String, PlayerDao> playerStateMap = states.get(player.getUUIDString());
 		if (playerStateMap == null) {
@@ -174,14 +173,29 @@ public class PlayerStateManager {
 			playerDao = PlayerDao.getPlayerDao(player, state);
 		}
 		
-		final Location loc = Location.fromString(playerDao.location);
-		Canary.getServer().addSynchronousTask(new ServerTask(plugin, 0) {
-			@Override
-			public void run() {
-				player.teleportTo(loc);
-			}
-		});
+		return Location.fromString(playerDao.location);
 	}
+	
+	// public void restorePlayerLocation(final Player player, final String state)
+	// throws DatabaseReadException {
+	// Map<String, PlayerDao> playerStateMap = states.get(player.getUUIDString());
+	// if (playerStateMap == null) {
+	// playerStateMap = new HashMap<String, PlayerDao>();
+	// states.put(player.getUUIDString(), playerStateMap);
+	// }
+	// PlayerDao playerDao = playerStateMap.get(state);
+	// if (playerDao == null) {
+	// playerDao = PlayerDao.getPlayerDao(player, state);
+	// }
+	//
+	// final Location loc = Location.fromString(playerDao.location);
+	// Canary.getServer().addSynchronousTask(new ServerTask(plugin, 0) {
+	// @Override
+	// public void run() {
+	// player.teleportTo(loc);
+	// }
+	// });
+	// }
 	
 	private boolean loadPlayerState(final Player player, final String state, final Save[] saves,
 			final PlayerDao playerDao) {
@@ -285,6 +299,24 @@ public class PlayerStateManager {
 		
 		PlayerStatePlugin.LOG.info("Cleared " + player.getDisplayName() + " state");
 	}
+	
+	// public void setPlayerAfterDeathState(final Player player) {
+	// // Clear conditions
+	// player.removeAllPotionEffects();
+	// player.setExhaustion(0);
+	// player.setExperience(0);
+	// player.setHealth(20);
+	// player.setHunger(20);
+	// player.setMaxHealth(20);
+	//
+	// // Clear inventory
+	// final PlayerInventory pi = player.getInventory();
+	// pi.clearContents();
+	// pi.setBootsSlot(null);
+	// pi.setChestPlateSlot(null);
+	// pi.setHelmetSlot(null);
+	// pi.setLeggingsSlot(null);
+	// }
 	
 	private List<String> serializePotionEffects(final List<PotionEffect> effects) {
 		final List<String> list = new ArrayList<String>(effects.size());

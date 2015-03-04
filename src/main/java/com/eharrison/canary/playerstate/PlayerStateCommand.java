@@ -65,7 +65,8 @@ public class PlayerStateCommand implements CommandListener {
 		if (player != null) {
 			final String state = parameters[1];
 			manager.loadPlayerState(player, state, saves);
-			manager.restorePlayerLocation(player, state);
+			// TODO
+			// manager.restorePlayerLocation(player, state);
 			caller.message("Changed " + player.getDisplayName() + " current state to " + state);
 		}
 	}
