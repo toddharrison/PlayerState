@@ -30,6 +30,9 @@ import net.canarymod.plugin.PluginListener;
 import net.visualillusionsent.utils.TaskManager;
 
 import com.eharrison.canary.playerstate.PlayerState.Save;
+import com.eharrison.canary.playerstate.hook.WorldDeathHook;
+import com.eharrison.canary.playerstate.hook.WorldEnterHook;
+import com.eharrison.canary.playerstate.hook.WorldExitHook;
 import com.eharrison.canary.util.JarUtil;
 
 public class PlayerStatePlugin extends Plugin implements PluginListener {
@@ -178,26 +181,33 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	public void onTeleport(final TeleportHook hook) {
 		final Player player = hook.getPlayer();
 		
-		final String uuid = player.getUUIDString();
-		tpingPlayerList.add(uuid);
-		if (readyPlayers.contains(uuid)) {
-			readyPlayers.remove(uuid);
-			tpingPlayerList.remove(uuid);
-		} else if (connectingPlayers.contains(uuid)) {
-			LOG.info(player.getName() + " connected.");
-			connectingPlayers.remove(uuid);
-		} else if (deadPlayers.containsKey(uuid)) {
-			hook.setCanceled();
-			readyPlayers.add(uuid);
-			final Location diedLoc = deadPlayers.remove(uuid);
-			player.teleportTo(diedLoc.getWorld().getSpawnLocation());
-		} else if (tpingPlayerList.contains(uuid)) {
-			// LOG.warn("Already TPing");
-			hook.setCanceled();
-			return;
-		} else {
-			hook.setCanceled();
-			delayedTeleport(player, hook.getDestination(), null);
+		switch (hook.getTeleportReason()) {
+			case COMMAND:
+			case RESPAWN:
+			case PLUGIN:
+				final String uuid = player.getUUIDString();
+				tpingPlayerList.add(uuid);
+				if (readyPlayers.contains(uuid)) {
+					readyPlayers.remove(uuid);
+					tpingPlayerList.remove(uuid);
+				} else if (connectingPlayers.contains(uuid)) {
+					connectingPlayers.remove(uuid);
+				} else if (deadPlayers.containsKey(uuid)) {
+					hook.setCanceled();
+					final Location diedLoc = deadPlayers.remove(uuid);
+					final Location spawnLoc = player.getSpawnPosition();
+					final WorldDeathHook worldDeathHook = new WorldDeathHook(player, diedLoc, spawnLoc);
+					worldDeathHook.call();
+					readyPlayers.add(uuid);
+					player.teleportTo(worldDeathHook.getSpawnLocation());
+				} else {
+					hook.setCanceled();
+					delayedTeleport(player, hook.getDestination(), null);
+				}
+				break;
+			default:
+				// Do nothing
+				// LOG.info(hook.getTeleportReason());
 		}
 	}
 	
@@ -217,24 +227,42 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 					player.message(ChatFormat.RED + "Teleportation cancelled");
 					tpingPlayerList.remove(uuid);
 				} else {
-					readyPlayers.add(uuid);
-					player.teleportTo(destination);
+					final Location targetLoc;
+					final WorldExitHook worldExitHook;
+					if (curLoc.getWorld() != destination.getWorld()) {
+						worldExitHook = new WorldExitHook(player, curLoc.getWorld(), curLoc, destination);
+						targetLoc = worldExitHook.getToLocation();
+					} else {
+						worldExitHook = null;
+						targetLoc = destination;
+					}
 					
-					// TODO Wait until it's safe to spawn in again
-					TaskManager.scheduleDelayedTask(new Runnable() {
-						@Override
-						public void run() {
-							readyPlayers.add(uuid);
-							player.teleportTo(destination);
-							if (successMessage != null) {
-								player.message(successMessage);
-							}
-						}
-					}, 500, TimeUnit.MILLISECONDS);
+					preloadChunk(targetLoc);
+					LOG.info(targetLoc.getWorld().getBlockAt(targetLoc));
+					readyPlayers.add(uuid);
+					player.teleportTo(targetLoc);
+					
+					// // TODO Wait until it's safe to spawn in again
+					// TaskManager.scheduleDelayedTask(new Runnable() {
+					// @Override
+					// public void run() {
+					// readyPlayers.add(uuid);
+					// player.teleportTo(targetLoc);
+					
 					if (successMessage != null) {
 						player.message(successMessage);
 					}
+					
+					if (worldExitHook != null) {
+						final WorldEnterHook worldEnterHook = new WorldEnterHook(worldExitHook);
+						worldEnterHook.call();
+					}
 				}
+				// }, 500, TimeUnit.MILLISECONDS);
+				// // if (successMessage != null) {
+				// // player.message(successMessage);
+				// // }
+				// }
 			}
 		}, TELEPORT_DELAY_SECONDS, TimeUnit.SECONDS);
 	}
@@ -305,39 +333,40 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	// spawnLoc, worldExitHook.getReason()));
 	// }
 	// }
-	//
-	// // @HookHandler
-	// public void onWorldEnter(final WorldEnterHook hook) throws DatabaseReadException {
-	// final Player player = hook.getPlayer();
-	// final String fromState = getState(hook.getFromLocation().getWorld());
-	// final String toState = getState(hook.getToLocation().getWorld());
-	//
-	// if (!toState.equals(fromState)) {
-	// if (manager.loadPlayerState(player, toState, getSaves(toState))) {
-	// player.message(ChatFormat.GOLD + "Loaded state " + toState);
-	// } else {
-	// player.message(ChatFormat.GOLD + "Entering state " + toState);
+	
+	// @HookHandler
+	// public void onWorldDeath(final WorldDeathHook hook) {
+	// hook.getPlayer().message("You died");
+	// hook.setSpawnLocation(hook.getDeathLocation().getWorld().getSpawnLocation());
 	// }
-	// }
-	// }
-	//
-	// // @HookHandler
-	// public void onWorldExit(final WorldExitHook hook) throws DatabaseWriteException {
-	// final Player player = hook.getPlayer();
-	// final String fromState = getState(hook.getFromLocation().getWorld());
-	// final String toState = getState(hook.getToLocation().getWorld());
-	//
-	// if (!toState.equals(fromState)) {
-	// if (hook.getReason() == WorldChangeCause.DEATH) {
-	// // TODO
-	// // manager.setPlayerAfterDeathState(player);
-	// player.message(ChatFormat.GOLD + "Applied death penalties");
-	// }
-	// manager.savePlayerState(player, fromState, getSaves(fromState));
-	// player.message(ChatFormat.GOLD + "Saved state " + fromState);
-	// }
-	// }
-	//
+	
+	@HookHandler
+	public void onWorldEnter(final WorldEnterHook hook) throws DatabaseReadException {
+		final Player player = hook.getPlayer();
+		final String fromState = getState(hook.getFromLocation().getWorld());
+		final String toState = getState(hook.getToLocation().getWorld());
+		
+		if (!toState.equals(fromState)) {
+			if (manager.loadPlayerState(player, toState, getSaves(toState))) {
+				player.message(ChatFormat.GOLD + "Loaded state " + toState);
+			} else {
+				player.message(ChatFormat.GOLD + "Entering state " + toState);
+			}
+		}
+	}
+	
+	@HookHandler
+	public void onWorldExit(final WorldExitHook hook) throws DatabaseWriteException {
+		final Player player = hook.getPlayer();
+		final String fromState = getState(hook.getFromLocation().getWorld());
+		final String toState = getState(hook.getToLocation().getWorld());
+		
+		if (!toState.equals(fromState)) {
+			manager.savePlayerState(player, fromState, getSaves(fromState));
+			player.message(ChatFormat.GOLD + "Saved state " + fromState);
+		}
+	}
+	
 	// private void waitTeleport(final Player player, final Location loc, final String successMessage,
 	// final String failureMessage) {
 	// final Location curLoc = player.getLocation();

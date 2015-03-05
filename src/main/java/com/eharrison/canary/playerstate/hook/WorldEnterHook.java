@@ -10,15 +10,20 @@ public class WorldEnterHook extends Hook {
 	private final World world;
 	private final Location fromLocation;
 	private final Location toLocation;
-	private final WorldChangeCause reason;
+	
+	public WorldEnterHook(final WorldExitHook hook) {
+		player = hook.getPlayer();
+		world = hook.getToLocation().getWorld();
+		fromLocation = hook.getFromLocation();
+		toLocation = hook.getToLocation();
+	}
 	
 	public WorldEnterHook(final Player player, final World world, final Location fromLocation,
-			final Location toLocation, final WorldChangeCause reason) {
+			final Location toLocation) {
 		this.player = player;
 		this.world = world;
 		this.fromLocation = fromLocation;
 		this.toLocation = toLocation;
-		this.reason = reason;
 	}
 	
 	public Player getPlayer() {
@@ -35,9 +40,5 @@ public class WorldEnterHook extends Hook {
 	
 	public Location getToLocation() {
 		return toLocation;
-	}
-	
-	public WorldChangeCause getReason() {
-		return reason;
 	}
 }
