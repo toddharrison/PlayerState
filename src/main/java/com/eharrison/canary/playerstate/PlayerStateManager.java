@@ -118,6 +118,8 @@ public class PlayerStateManager {
 					case LOCATIONS:
 						playerDao.homeLocation = player.getHome().toString();
 						playerDao.spawnLocation = player.getSpawnPosition().toString();
+						System.out.println("***** " + playerDao.homeLocation);
+						System.out.println("***** " + playerDao.spawnLocation);
 						playerDao.location = player.getLocation().toString();
 						break;
 					case PREFIX:
@@ -283,6 +285,9 @@ public class PlayerStateManager {
 					final Location defaultSpawn = player.getWorld().getSpawnLocation();
 					player.setHome(defaultSpawn);
 					player.setSpawnPosition(defaultSpawn);
+					System.out.println("$$$$$ " + defaultSpawn);
+					System.out.println("$$$$$ " + player.getHome());
+					System.out.println("$$$$$ " + player.getSpawnPosition());
 					break;
 				case PREFIX:
 					player.setPrefix(null);

@@ -9,7 +9,7 @@ public class WorldExitHook extends Hook {
 	private final Player player;
 	private final World world;
 	private final Location fromLocation;
-	private Location toLocation;
+	private final Location toLocation;
 	
 	public WorldExitHook(final Player player, final World world, final Location fromLocation,
 			final Location toLocation) {
@@ -33,9 +33,5 @@ public class WorldExitHook extends Hook {
 	
 	public Location getToLocation() {
 		return toLocation;
-	}
-	
-	public void setToLocation(final Location toLocation) {
-		this.toLocation = toLocation;
 	}
 }
