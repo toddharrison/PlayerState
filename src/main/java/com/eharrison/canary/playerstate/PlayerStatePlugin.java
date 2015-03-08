@@ -176,29 +176,17 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 		if (deadPlayers.containsKey(uuid)) {
 			final Location diedLoc = deadPlayers.get(uuid);
 			Location respawn = manager.getPlayerSpawnLocation(player, getState(diedLoc.getWorld()));
+			LOG.info("Returning to " + respawn);
 			
 			final WorldDeathHook worldDeathHook = new WorldDeathHook(player, diedLoc, respawn);
 			worldDeathHook.call();
 			
 			respawn = worldDeathHook.getSpawnLocation();
-			// player.setSpawnPosition(respawn);
 			
 			final Location targetLoc = respawn;
-			// TaskManager.scheduleDelayedTask(new Runnable() {
-			// @Override
-			// public void run() {
-			// // tpingPlayers.add(uuid);
-			// // LOG.info("Respawning the dead to " + targetLoc);
-			// player.teleportTo(targetLoc);
-			// deadPlayers.remove(uuid);
-			// }
-			// }, 50, TimeUnit.MILLISECONDS);
-			
-			Canary.getServer().addSynchronousTask(new ServerTask(this, 0, false) {
+			Canary.getServer().addSynchronousTask(new ServerTask(this, 50, false) {
 				@Override
 				public void run() {
-					// TODO Auto-generated method stub
-					LOG.info("Respawning the dead to " + targetLoc);
 					player.teleportTo(targetLoc);
 					deadPlayers.remove(uuid);
 				}
@@ -245,7 +233,6 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 				final Location bedLoc = hook.getDestination();
 				final String state = getState(bedLoc.getWorld());
 				manager.setPlayerSpawnLocation(player, state, bedLoc);
-				player.setSpawnPosition(Canary.getServer().getDefaultWorld().getSpawnLocation());
 			} else {
 				// LOG.info("Teleporting within same world");
 			}
@@ -292,6 +279,7 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 			}
 		} else {
 			// Restore things lost transitioning a world, but not a state
+			// TODO fix
 			final int gameMode = manager.getGameMode(player, toState);
 			LOG.info("Restoring game mode to " + gameMode);
 			player.setModeId(gameMode);
