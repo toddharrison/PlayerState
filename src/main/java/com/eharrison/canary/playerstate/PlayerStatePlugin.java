@@ -184,7 +184,7 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 			respawn = worldDeathHook.getSpawnLocation();
 			
 			final Location targetLoc = respawn;
-			Canary.getServer().addSynchronousTask(new ServerTask(this, 50, false) {
+			Canary.getServer().addSynchronousTask(new ServerTask(this, 10, false) {
 				@Override
 				public void run() {
 					player.teleportTo(targetLoc);
