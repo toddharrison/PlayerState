@@ -176,7 +176,7 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 		if (deadPlayers.containsKey(uuid)) {
 			final Location diedLoc = deadPlayers.get(uuid);
 			Location respawn = manager.getPlayerSpawnLocation(player, getState(diedLoc.getWorld()));
-			LOG.info("Returning to " + respawn);
+			// LOG.info("Returning to " + respawn);
 			
 			final WorldDeathHook worldDeathHook = new WorldDeathHook(player, diedLoc, respawn);
 			worldDeathHook.call();
@@ -280,9 +280,9 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 		} else {
 			// Restore things lost transitioning a world, but not a state
 			// TODO fix
-			final int gameMode = manager.getGameMode(player, toState);
-			LOG.info("Restoring game mode to " + gameMode);
-			player.setModeId(gameMode);
+			// final int gameMode = manager.getGameMode(player, toState);
+			// LOG.info("Restoring game mode to " + gameMode);
+			// player.setModeId(gameMode);
 		}
 	}
 	
