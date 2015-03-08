@@ -23,10 +23,13 @@ import net.canarymod.hook.command.PlayerCommandHook;
 import net.canarymod.hook.player.ConnectionHook;
 import net.canarymod.hook.player.DisconnectionHook;
 import net.canarymod.hook.player.PlayerDeathHook;
+import net.canarymod.hook.player.PlayerRespawnedHook;
 import net.canarymod.hook.player.TeleportHook;
+import net.canarymod.hook.player.TeleportHook.TeleportCause;
 import net.canarymod.logger.Logman;
 import net.canarymod.plugin.Plugin;
 import net.canarymod.plugin.PluginListener;
+import net.canarymod.tasks.ServerTask;
 import net.visualillusionsent.utils.TaskManager;
 
 import com.eharrison.canary.playerstate.PlayerState.Save;
@@ -96,7 +99,8 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	}
 	
 	@HookHandler
-	public void onConnection(final ConnectionHook hook) throws DatabaseReadException {
+	public void onConnection(final ConnectionHook hook) throws DatabaseReadException,
+			DatabaseWriteException {
 		final Player player = hook.getPlayer();
 		final String state = getState(player.getWorld());
 		
@@ -104,7 +108,9 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 		if (hook.isFirstConnection()) {
 			final Location loc = Canary.getServer().getDefaultWorld().getSpawnLocation();
 			
-			player.setSpawnPosition(loc);
+			// player.setSpawnPosition(loc);
+			manager.savePlayerState(player, state, getSaves(state));
+			manager.setPlayerSpawnLocation(player, state, loc);
 			player.setHome(loc);
 			
 			if (config.exactSpawn()) {
@@ -163,48 +169,66 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	}
 	
 	@HookHandler
-	public void onTeleport(final TeleportHook hook) {
+	public void onRespawned(final PlayerRespawnedHook hook) throws DatabaseReadException {
 		final Player player = hook.getPlayer();
 		final String uuid = player.getUUIDString();
 		
 		if (deadPlayers.containsKey(uuid)) {
-			tpingPlayers.add(uuid);
-			hook.setCanceled();
+			final Location diedLoc = deadPlayers.get(uuid);
+			Location respawn = manager.getPlayerSpawnLocation(player, getState(diedLoc.getWorld()));
 			
-			LOG.info("DeathSpawn: " + player.getSpawnPosition());
-			
-			final Location diedLoc = deadPlayers.remove(uuid);
-			final WorldDeathHook worldDeathHook = new WorldDeathHook(player, diedLoc,
-					player.getSpawnPosition());
+			final WorldDeathHook worldDeathHook = new WorldDeathHook(player, diedLoc, respawn);
 			worldDeathHook.call();
 			
-			LOG.info("DeathHookSpawn: " + worldDeathHook.getSpawnLocation());
+			respawn = worldDeathHook.getSpawnLocation();
+			// player.setSpawnPosition(respawn);
 			
-			final Location spawnLoc = worldDeathHook.getSpawnLocation();
-			if (diedLoc.getWorld() != spawnLoc.getWorld()) {
-				player.message(ChatFormat.GOLD + "Changing world via death");
-				final WorldExitHook worldExitHook = new WorldExitHook(player, diedLoc.getWorld(), diedLoc,
-						spawnLoc);
-				worldExitHook.call();
-				
-				player.teleportTo(spawnLoc);
-				
-				final WorldEnterHook worldEnterHook = new WorldEnterHook(worldExitHook);
-				worldEnterHook.call();
-			} else {
-				player.teleportTo(spawnLoc);
-			}
-		} else if (tpingPlayers.contains(uuid)) {
+			final Location targetLoc = respawn;
+			// TaskManager.scheduleDelayedTask(new Runnable() {
+			// @Override
+			// public void run() {
+			// // tpingPlayers.add(uuid);
+			// // LOG.info("Respawning the dead to " + targetLoc);
+			// player.teleportTo(targetLoc);
+			// deadPlayers.remove(uuid);
+			// }
+			// }, 50, TimeUnit.MILLISECONDS);
+			
+			Canary.getServer().addSynchronousTask(new ServerTask(this, 0, false) {
+				@Override
+				public void run() {
+					// TODO Auto-generated method stub
+					LOG.info("Respawning the dead to " + targetLoc);
+					player.teleportTo(targetLoc);
+					deadPlayers.remove(uuid);
+				}
+			});
+		}
+	}
+	
+	@HookHandler
+	public void onTeleport(final TeleportHook hook) throws DatabaseReadException {
+		final Player player = hook.getPlayer();
+		final String uuid = player.getUUIDString();
+		
+		// LOG.info(hook);
+		
+		if (tpingPlayers.contains(uuid)) {
 			// Execute the teleport
+			// LOG.info("Teleporting");
 			tpingPlayers.remove(uuid);
+		} else if (deadPlayers.containsKey(uuid)) {
+			// LOG.info("Teleporting DEAD");
 		} else {
+			// LOG.info("Readying Teleport");
 			final Location curLoc = hook.getCurrentLocation();
 			final Location destination = hook.getDestination();
 			
 			if (curLoc.getWorld() != destination.getWorld()) {
+				// LOG.info("Changing world");
 				tpingPlayers.add(uuid);
 				hook.setCanceled();
-				player.message(ChatFormat.GOLD + "Changing world");
+				// player.message(ChatFormat.GOLD + "Changing world");
 				
 				final WorldExitHook worldExitHook = new WorldExitHook(player, curLoc.getWorld(), curLoc,
 						destination);
@@ -214,6 +238,16 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 				
 				final WorldEnterHook worldEnterHook = new WorldEnterHook(worldExitHook);
 				worldEnterHook.call();
+			} else if (hook.getTeleportReason() == TeleportCause.BED) {
+				// LOG.info("Teleport Bed");
+				
+				// TODO inBed check?
+				final Location bedLoc = hook.getDestination();
+				final String state = getState(bedLoc.getWorld());
+				manager.setPlayerSpawnLocation(player, state, bedLoc);
+				player.setSpawnPosition(Canary.getServer().getDefaultWorld().getSpawnLocation());
+			} else {
+				// LOG.info("Teleporting within same world");
 			}
 		}
 	}
@@ -241,17 +275,26 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	}
 	
 	@HookHandler
-	public void onWorldEnter(final WorldEnterHook hook) throws DatabaseReadException {
+	public void onWorldEnter(final WorldEnterHook hook) throws DatabaseReadException,
+			DatabaseWriteException {
 		final Player player = hook.getPlayer();
+		final World toWorld = hook.getToLocation().getWorld();
 		final String fromState = getState(hook.getFromLocation().getWorld());
-		final String toState = getState(hook.getToLocation().getWorld());
+		final String toState = getState(toWorld);
 		
 		if (!toState.equals(fromState)) {
 			if (manager.loadPlayerState(player, toState, getSaves(toState))) {
 				player.message(ChatFormat.GOLD + "Loaded state " + toState);
 			} else {
+				manager.savePlayerState(player, toState, getSaves(toState));
+				manager.setPlayerSpawnLocation(player, toState, toWorld.getSpawnLocation());
 				player.message(ChatFormat.GOLD + "Entering state " + toState);
 			}
+		} else {
+			// Restore things lost transitioning a world, but not a state
+			final int gameMode = manager.getGameMode(player, toState);
+			LOG.info("Restoring game mode to " + gameMode);
+			player.setModeId(gameMode);
 		}
 	}
 	
