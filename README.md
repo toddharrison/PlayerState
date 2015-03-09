@@ -1,6 +1,6 @@
 PlayerState
 ===========
-v0.2.0
+v0.2.1
 
 PlayerState is a simple plugin which will save and load player state within Minecraft. For instance, a server with a survival and creative world using PlayerState can prevent players from carrying items from creative into the survival world. It is built against the latest 1.2 snapshot of [canarymod](http://www.canarymod.net/) and supports Minecraft 1.8.
 
@@ -17,6 +17,18 @@ This plugin can save player state information like:
 * Statistics
 * Achievements
 * And more...
+
+## New
+
+### 0.2.1
+
+* Using `/spawn` or `/home` will require a three second delay before the command is executed where the player is not moving. `/tp` does not have the same requirement.
+* Respawning and using a bed is now working correctly. There are several assumptions:
+  * You may have only one bed per state. If you have a bed you will respawn there on death anywhere within that state.
+  * If you do not have a bed then you will respawn at the world spawn point for the world you are in.
+  * If you use `/spawn` then likewise you will return to the world spawn point for the world you are in unless you specify the world like `/spawn foo`.
+  * You may have one home per state, and you will cross worlds to return to it.
+  * Warps are global across all states.
 
 ## Installation
 
@@ -129,7 +141,7 @@ The maven dependency looks like this, but I don't have a hosting repository just
     <dependency>
       <groupId>com.eharrison.canary</groupId>
       <artifactId>player-state</artifactId>
-      <version>0.2.0</version>
+      <version>0.2.1</version>
       <scope>provided</scope>
     </dependency>
 
