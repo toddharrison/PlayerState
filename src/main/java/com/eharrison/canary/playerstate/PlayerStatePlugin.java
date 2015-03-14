@@ -33,6 +33,7 @@ import net.canarymod.tasks.ServerTask;
 import net.visualillusionsent.utils.TaskManager;
 
 import com.eharrison.canary.playerstate.PlayerState.Save;
+import com.eharrison.canary.playerstate.hook.WorldDeathExitHook;
 import com.eharrison.canary.playerstate.hook.WorldDeathHook;
 import com.eharrison.canary.playerstate.hook.WorldEnterHook;
 import com.eharrison.canary.playerstate.hook.WorldExitHook;
@@ -50,12 +51,14 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	
 	private final Collection<String> tpingPlayers;
 	private final Map<String, Location> deadPlayers;
+	private final Collection<String> respawningPlayers;
 	
 	public PlayerStatePlugin() {
 		PlayerStatePlugin.LOG = getLogman();
 		
 		tpingPlayers = Collections.synchronizedCollection(new ArrayList<String>());
 		deadPlayers = Collections.synchronizedMap(new HashMap<String, Location>());
+		respawningPlayers = Collections.synchronizedCollection(new ArrayList<String>());
 		
 		try {
 			JarUtil.exportResource(this, "PlayerState.cfg", new File("config/PlayerState"));
@@ -154,6 +157,7 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 			if (command.length > 1) {
 				targetPlayer = Canary.getServer().getPlayer(command[1]);
 			}
+			// TODO handle offline players
 			final Location loc = targetPlayer.getHome();
 			delayedTeleport(player, loc, ChatFormat.RED + "Going home");
 		} else if (command[0].equals("/tp")) {
@@ -174,23 +178,38 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 		final String uuid = player.getUUIDString();
 		
 		if (deadPlayers.containsKey(uuid)) {
-			final Location diedLoc = deadPlayers.get(uuid);
-			Location respawn = manager.getPlayerSpawnLocation(player, getState(diedLoc.getWorld()));
-			// LOG.info("Returning to " + respawn);
-			
-			final WorldDeathHook worldDeathHook = new WorldDeathHook(player, diedLoc, respawn);
-			worldDeathHook.call();
-			
-			respawn = worldDeathHook.getSpawnLocation();
-			
-			final Location targetLoc = respawn;
-			Canary.getServer().addSynchronousTask(new ServerTask(this, 10, false) {
-				@Override
-				public void run() {
-					player.teleportTo(targetLoc);
-					deadPlayers.remove(uuid);
+			if (!respawningPlayers.contains(uuid)) {
+				respawningPlayers.add(uuid);
+				
+				final Location diedLoc = deadPlayers.get(uuid);
+				Location respawn = manager.getPlayerSpawnLocation(player, getState(diedLoc.getWorld()));
+				
+				final WorldDeathHook worldDeathHook = new WorldDeathHook(player, diedLoc, respawn);
+				worldDeathHook.call();
+				
+				respawn = worldDeathHook.getSpawnLocation();
+				
+				if (diedLoc.getWorld() != respawn.getWorld()) {
+					final WorldExitHook worldExitHook = new WorldExitHook(player, diedLoc.getWorld(),
+							diedLoc, respawn);
+					worldExitHook.call();
+					
+					new WorldDeathExitHook(player, diedLoc.getWorld(), diedLoc, respawn).call();
+					
+					final Location targetLoc = respawn;
+					Canary.getServer().addSynchronousTask(new ServerTask(this, 10, false) {
+						@Override
+						public void run() {
+							player.teleportTo(targetLoc);
+							deadPlayers.remove(uuid);
+							respawningPlayers.remove(uuid);
+							
+							final WorldEnterHook worldEnterHook = new WorldEnterHook(worldExitHook);
+							worldEnterHook.call();
+						}
+					});
 				}
-			});
+			}
 		}
 	}
 	
@@ -199,24 +218,19 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 		final Player player = hook.getPlayer();
 		final String uuid = player.getUUIDString();
 		
-		// LOG.info(hook);
-		
 		if (tpingPlayers.contains(uuid)) {
 			// Execute the teleport
-			// LOG.info("Teleporting");
 			tpingPlayers.remove(uuid);
 		} else if (deadPlayers.containsKey(uuid)) {
-			// LOG.info("Teleporting DEAD");
+			// Do nothing
 		} else {
 			// LOG.info("Readying Teleport");
 			final Location curLoc = hook.getCurrentLocation();
 			final Location destination = hook.getDestination();
 			
 			if (curLoc.getWorld() != destination.getWorld()) {
-				// LOG.info("Changing world");
 				tpingPlayers.add(uuid);
 				hook.setCanceled();
-				// player.message(ChatFormat.GOLD + "Changing world");
 				
 				final WorldExitHook worldExitHook = new WorldExitHook(player, curLoc.getWorld(), curLoc,
 						destination);
@@ -227,8 +241,6 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 				final WorldEnterHook worldEnterHook = new WorldEnterHook(worldExitHook);
 				worldEnterHook.call();
 			} else if (hook.getTeleportReason() == TeleportCause.BED) {
-				// LOG.info("Teleport Bed");
-				
 				// TODO inBed check?
 				final Location bedLoc = hook.getDestination();
 				final String state = getState(bedLoc.getWorld());
