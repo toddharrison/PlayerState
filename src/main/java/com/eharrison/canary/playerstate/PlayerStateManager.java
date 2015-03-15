@@ -41,12 +41,10 @@ public class PlayerStateManager {
 	private static final long SAVE_DELAY_SECONDS = 10;
 	private SavePlayerDaoTask task;
 	
-	private final PlayerStatePlugin plugin;
 	private final Map<String, Map<String, PlayerDao>> states;
 	private final Collection<PlayerDao> persistDaos;
 	
 	public PlayerStateManager(final PlayerStatePlugin plugin) {
-		this.plugin = plugin;
 		states = new HashMap<String, Map<String, PlayerDao>>();
 		persistDaos = new HashSet<PlayerDao>();
 	}
@@ -161,42 +159,6 @@ public class PlayerStateManager {
 		return success;
 	}
 	
-	// public Location getPlayerSpawnLocation(final Player player, final String state)
-	// throws DatabaseReadException {
-	// Map<String, PlayerDao> playerStateMap = states.get(player.getUUIDString());
-	// if (playerStateMap == null) {
-	// playerStateMap = new HashMap<String, PlayerDao>();
-	// states.put(player.getUUIDString(), playerStateMap);
-	// }
-	// PlayerDao playerDao = playerStateMap.get(state);
-	// if (playerDao == null) {
-	// playerDao = PlayerDao.getPlayerDao(player, state);
-	// }
-	//
-	// // PlayerStatePlugin.LOG.info(playerDao);
-	// return Location.fromString(playerDao.spawnLocation);
-	// }
-	
-	// public void setPlayerSpawnLocation(final Player player, final String state, final Location loc)
-	// throws DatabaseReadException {
-	// Map<String, PlayerDao> playerStateMap = states.get(player.getUUIDString());
-	// if (playerStateMap == null) {
-	// playerStateMap = new HashMap<String, PlayerDao>();
-	// states.put(player.getUUIDString(), playerStateMap);
-	// }
-	// PlayerDao playerDao = playerStateMap.get(state);
-	// if (playerDao == null) {
-	// playerDao = PlayerDao.getPlayerDao(player, state);
-	// }
-	//
-	// synchronized (persistDaos) {
-	// // PlayerStatePlugin.LOG.info("playerDAO: " + playerDao);
-	// // PlayerStatePlugin.LOG.info("spawnLocation: " + loc);
-	// playerDao.spawnLocation = loc.toString();
-	// persistDaos.add(playerDao);
-	// }
-	// }
-	
 	public Location getPlayerReturnLocation(final Player player, final String state)
 			throws DatabaseReadException {
 		Map<String, PlayerDao> playerStateMap = states.get(player.getUUIDString());
@@ -211,41 +173,6 @@ public class PlayerStateManager {
 		
 		return Location.fromString(playerDao.location);
 	}
-	
-	// public int getGameMode(final Player player, final String state) throws DatabaseReadException {
-	// Map<String, PlayerDao> playerStateMap = states.get(player.getUUIDString());
-	// if (playerStateMap == null) {
-	// playerStateMap = new HashMap<String, PlayerDao>();
-	// states.put(player.getUUIDString(), playerStateMap);
-	// }
-	// PlayerDao playerDao = playerStateMap.get(state);
-	// if (playerDao == null) {
-	// playerDao = PlayerDao.getPlayerDao(player, state);
-	// }
-	//
-	// return playerDao.gameMode;
-	// }
-	
-	// public void restorePlayerLocation(final Player player, final String state)
-	// throws DatabaseReadException {
-	// Map<String, PlayerDao> playerStateMap = states.get(player.getUUIDString());
-	// if (playerStateMap == null) {
-	// playerStateMap = new HashMap<String, PlayerDao>();
-	// states.put(player.getUUIDString(), playerStateMap);
-	// }
-	// PlayerDao playerDao = playerStateMap.get(state);
-	// if (playerDao == null) {
-	// playerDao = PlayerDao.getPlayerDao(player, state);
-	// }
-	//
-	// final Location loc = Location.fromString(playerDao.location);
-	// Canary.getServer().addSynchronousTask(new ServerTask(plugin, 0) {
-	// @Override
-	// public void run() {
-	// player.teleportTo(loc);
-	// }
-	// });
-	// }
 	
 	private boolean loadPlayerState(final Player player, final String state, final Save[] saves,
 			final PlayerDao playerDao) {
@@ -351,24 +278,6 @@ public class PlayerStateManager {
 		
 		PlayerStatePlugin.LOG.info("Cleared " + player.getDisplayName() + " state");
 	}
-	
-	// public void setPlayerAfterDeathState(final Player player) {
-	// // Clear conditions
-	// player.removeAllPotionEffects();
-	// player.setExhaustion(0);
-	// player.setExperience(0);
-	// player.setHealth(20);
-	// player.setHunger(20);
-	// player.setMaxHealth(20);
-	//
-	// // Clear inventory
-	// final PlayerInventory pi = player.getInventory();
-	// pi.clearContents();
-	// pi.setBootsSlot(null);
-	// pi.setChestPlateSlot(null);
-	// pi.setHelmetSlot(null);
-	// pi.setLeggingsSlot(null);
-	// }
 	
 	private List<String> serializePotionEffects(final List<PotionEffect> effects) {
 		final List<String> list = new ArrayList<String>(effects.size());
