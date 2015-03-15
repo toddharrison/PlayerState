@@ -209,8 +209,6 @@ public class PlayerStateManager {
 					case LOCATIONS:
 						player.setHome(Location.fromString(playerDao.homeLocation));
 						player.setSpawnPosition(Location.fromString(playerDao.spawnLocation));
-						
-						PlayerStatePlugin.LOG.info("TEST: " + player.getSpawnPosition());
 						break;
 					case PREFIX:
 						player.setPrefix(playerDao.prefix);
