@@ -117,7 +117,7 @@ public class PlayerStateManager {
 						break;
 					case LOCATIONS:
 						playerDao.homeLocation = player.getHome().toString();
-						// playerDao.spawnLocation = player.getSpawnPosition().toString();
+						playerDao.spawnLocation = player.getSpawnPosition().toString();
 						playerDao.location = player.getLocation().toString();
 						break;
 					case PREFIX:
@@ -161,41 +161,41 @@ public class PlayerStateManager {
 		return success;
 	}
 	
-	public Location getPlayerSpawnLocation(final Player player, final String state)
-			throws DatabaseReadException {
-		Map<String, PlayerDao> playerStateMap = states.get(player.getUUIDString());
-		if (playerStateMap == null) {
-			playerStateMap = new HashMap<String, PlayerDao>();
-			states.put(player.getUUIDString(), playerStateMap);
-		}
-		PlayerDao playerDao = playerStateMap.get(state);
-		if (playerDao == null) {
-			playerDao = PlayerDao.getPlayerDao(player, state);
-		}
-		
-		// PlayerStatePlugin.LOG.info(playerDao);
-		return Location.fromString(playerDao.spawnLocation);
-	}
+	// public Location getPlayerSpawnLocation(final Player player, final String state)
+	// throws DatabaseReadException {
+	// Map<String, PlayerDao> playerStateMap = states.get(player.getUUIDString());
+	// if (playerStateMap == null) {
+	// playerStateMap = new HashMap<String, PlayerDao>();
+	// states.put(player.getUUIDString(), playerStateMap);
+	// }
+	// PlayerDao playerDao = playerStateMap.get(state);
+	// if (playerDao == null) {
+	// playerDao = PlayerDao.getPlayerDao(player, state);
+	// }
+	//
+	// // PlayerStatePlugin.LOG.info(playerDao);
+	// return Location.fromString(playerDao.spawnLocation);
+	// }
 	
-	public void setPlayerSpawnLocation(final Player player, final String state, final Location loc)
-			throws DatabaseReadException {
-		Map<String, PlayerDao> playerStateMap = states.get(player.getUUIDString());
-		if (playerStateMap == null) {
-			playerStateMap = new HashMap<String, PlayerDao>();
-			states.put(player.getUUIDString(), playerStateMap);
-		}
-		PlayerDao playerDao = playerStateMap.get(state);
-		if (playerDao == null) {
-			playerDao = PlayerDao.getPlayerDao(player, state);
-		}
-		
-		synchronized (persistDaos) {
-			// PlayerStatePlugin.LOG.info("playerDAO: " + playerDao);
-			// PlayerStatePlugin.LOG.info("spawnLocation: " + loc);
-			playerDao.spawnLocation = loc.toString();
-			persistDaos.add(playerDao);
-		}
-	}
+	// public void setPlayerSpawnLocation(final Player player, final String state, final Location loc)
+	// throws DatabaseReadException {
+	// Map<String, PlayerDao> playerStateMap = states.get(player.getUUIDString());
+	// if (playerStateMap == null) {
+	// playerStateMap = new HashMap<String, PlayerDao>();
+	// states.put(player.getUUIDString(), playerStateMap);
+	// }
+	// PlayerDao playerDao = playerStateMap.get(state);
+	// if (playerDao == null) {
+	// playerDao = PlayerDao.getPlayerDao(player, state);
+	// }
+	//
+	// synchronized (persistDaos) {
+	// // PlayerStatePlugin.LOG.info("playerDAO: " + playerDao);
+	// // PlayerStatePlugin.LOG.info("spawnLocation: " + loc);
+	// playerDao.spawnLocation = loc.toString();
+	// persistDaos.add(playerDao);
+	// }
+	// }
 	
 	public Location getPlayerReturnLocation(final Player player, final String state)
 			throws DatabaseReadException {
@@ -212,19 +212,19 @@ public class PlayerStateManager {
 		return Location.fromString(playerDao.location);
 	}
 	
-	public int getGameMode(final Player player, final String state) throws DatabaseReadException {
-		Map<String, PlayerDao> playerStateMap = states.get(player.getUUIDString());
-		if (playerStateMap == null) {
-			playerStateMap = new HashMap<String, PlayerDao>();
-			states.put(player.getUUIDString(), playerStateMap);
-		}
-		PlayerDao playerDao = playerStateMap.get(state);
-		if (playerDao == null) {
-			playerDao = PlayerDao.getPlayerDao(player, state);
-		}
-		
-		return playerDao.gameMode;
-	}
+	// public int getGameMode(final Player player, final String state) throws DatabaseReadException {
+	// Map<String, PlayerDao> playerStateMap = states.get(player.getUUIDString());
+	// if (playerStateMap == null) {
+	// playerStateMap = new HashMap<String, PlayerDao>();
+	// states.put(player.getUUIDString(), playerStateMap);
+	// }
+	// PlayerDao playerDao = playerStateMap.get(state);
+	// if (playerDao == null) {
+	// playerDao = PlayerDao.getPlayerDao(player, state);
+	// }
+	//
+	// return playerDao.gameMode;
+	// }
 	
 	// public void restorePlayerLocation(final Player player, final String state)
 	// throws DatabaseReadException {
@@ -281,7 +281,9 @@ public class PlayerStateManager {
 						break;
 					case LOCATIONS:
 						player.setHome(Location.fromString(playerDao.homeLocation));
-						// player.setSpawnPosition(Location.fromString(playerDao.spawnLocation));
+						player.setSpawnPosition(Location.fromString(playerDao.spawnLocation));
+						
+						PlayerStatePlugin.LOG.info("TEST: " + player.getSpawnPosition());
 						break;
 					case PREFIX:
 						player.setPrefix(playerDao.prefix);
@@ -298,7 +300,7 @@ public class PlayerStateManager {
 		return loaded;
 	}
 	
-	public void clearPlayerState(final Player player, final Save[] saves)
+	private void clearPlayerState(final Player player, final Save[] saves)
 			throws DatabaseReadException {
 		// player.setAge(0);
 		
@@ -332,7 +334,7 @@ public class PlayerStateManager {
 				case LOCATIONS:
 					final Location defaultSpawn = player.getWorld().getSpawnLocation();
 					player.setHome(defaultSpawn);
-					// player.setSpawnPosition(defaultSpawn);
+					player.setSpawnPosition(defaultSpawn);
 					break;
 				case PREFIX:
 					player.setPrefix(null);
