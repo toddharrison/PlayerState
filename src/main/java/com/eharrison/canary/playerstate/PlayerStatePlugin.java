@@ -30,6 +30,7 @@ import net.canarymod.hook.player.TeleportHook;
 import net.canarymod.logger.Logman;
 import net.canarymod.plugin.Plugin;
 import net.canarymod.plugin.PluginListener;
+import net.canarymod.tasks.ServerTask;
 import net.visualillusionsent.utils.TaskManager;
 
 import com.eharrison.canary.playerstate.PlayerState.Save;
@@ -52,6 +53,7 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	private final Collection<String> connectingPlayers;
 	private final Map<String, WorldExitHook> exitingPlayers;
 	private final Map<String, Location> deadPlayers;
+	private final Map<String, Location> finalLocations;
 	
 	public PlayerStatePlugin() {
 		PlayerStatePlugin.LOG = getLogman();
@@ -59,6 +61,7 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 		connectingPlayers = Collections.synchronizedCollection(new HashSet<String>());
 		exitingPlayers = Collections.synchronizedMap(new HashMap<String, WorldExitHook>());
 		deadPlayers = Collections.synchronizedMap(new HashMap<String, Location>());
+		finalLocations = Collections.synchronizedMap(new HashMap<String, Location>());
 		
 		try {
 			JarUtil.exportResource(this, "PlayerState.cfg", new File("config/PlayerState"));
@@ -201,6 +204,16 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 			final WorldEnterHook worldEnter = new WorldEnterHook(exitingPlayers.remove(uuid));
 			worldEnter.call();
 		}
+		
+		final Location finalLoc = finalLocations.remove(uuid);
+		if (finalLoc != null) {
+			Canary.getServer().addSynchronousTask(new ServerTask(this, 10) {
+				@Override
+				public void run() {
+					player.teleportTo(finalLoc);
+				}
+			});
+		}
 	}
 	
 	@HookHandler
@@ -243,11 +256,14 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 					// LOG.info("  ISDEAD");
 					
 					final Location deadLoc = deadPlayers.remove(uuid);
-					Location spawnLoc = destination;
+					final Location spawnLoc = destination;
 					
 					final WorldDeathHook worldDeath = new WorldDeathHook(player, deadLoc, spawnLoc);
 					worldDeath.call();
-					spawnLoc = worldDeath.getSpawnLocation();
+					if (!spawnLoc.equals(worldDeath.getSpawnLocation())) {
+						// LOG.info("  OVERRIDESPAWN");
+						finalLocations.put(uuid, worldDeath.getSpawnLocation());
+					}
 					
 					if (isBedRespawn(spawnLoc)) {
 						// LOG.info("  GOTOBED");
@@ -304,6 +320,13 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 				break;
 		}
 	}
+	
+	// TODO: For testing only
+	// @HookHandler
+	// public void onWorldDeath(final WorldDeathHook hook) {
+	// final Location newLoc = Canary.getServer().getDefaultWorld().getSpawnLocation();
+	// hook.setSpawnLocation(newLoc);
+	// }
 	
 	@HookHandler
 	public void onWorldEnter(final WorldEnterHook hook) throws DatabaseReadException,
