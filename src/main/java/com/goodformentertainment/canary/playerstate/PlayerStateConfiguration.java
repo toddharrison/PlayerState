@@ -7,7 +7,7 @@ import net.canarymod.api.world.World;
 import net.canarymod.config.Configuration;
 import net.visualillusionsent.utils.PropertiesFile;
 
-import com.goodformentertainment.canary.playerstate.api.IWorldManager;
+import com.goodformentertainment.canary.playerstate.api.IWorldStateManager;
 import com.goodformentertainment.canary.playerstate.api.SaveState;
 
 public class PlayerStateConfiguration {
@@ -22,7 +22,7 @@ public class PlayerStateConfiguration {
 	}
 	
 	public String getDefaultState() {
-		return cfg.getString("state.global", IWorldManager.ALL_WORLDS);
+		return cfg.getString("state.global", IWorldStateManager.ALL_WORLDS);
 	}
 	
 	public String getState(final World world) {

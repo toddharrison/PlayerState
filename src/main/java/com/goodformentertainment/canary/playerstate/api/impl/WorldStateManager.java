@@ -5,14 +5,14 @@ import java.util.Map;
 
 import net.canarymod.api.world.World;
 
-import com.goodformentertainment.canary.playerstate.api.IWorldManager;
+import com.goodformentertainment.canary.playerstate.api.IWorldStateManager;
 import com.goodformentertainment.canary.playerstate.api.SaveState;
 
-public class WorldManager implements IWorldManager {
+public class WorldStateManager implements IWorldStateManager {
 	private final Map<String, String> managedWorldStates;
 	private final Map<String, SaveState[]> managedStateSaves;
 	
-	public WorldManager() {
+	public WorldStateManager() {
 		managedWorldStates = new HashMap<String, String>();
 		managedStateSaves = new HashMap<String, SaveState[]>();
 	}

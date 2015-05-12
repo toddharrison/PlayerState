@@ -2,7 +2,7 @@ package com.goodformentertainment.canary.playerstate.api;
 
 import net.canarymod.api.world.World;
 
-public interface IWorldManager {
+public interface IWorldStateManager {
 	public static final String ALL_WORLDS = "WORLD_ALL";
 	public static final String MANAGED_WORLD = "WORLD_MANAGED_";
 	

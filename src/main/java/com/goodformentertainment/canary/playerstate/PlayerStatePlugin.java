@@ -39,9 +39,9 @@ import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.LoggerConfig;
 
-import com.goodformentertainment.canary.playerstate.api.IWorldManager;
+import com.goodformentertainment.canary.playerstate.api.IWorldStateManager;
 import com.goodformentertainment.canary.playerstate.api.SaveState;
-import com.goodformentertainment.canary.playerstate.api.impl.WorldManager;
+import com.goodformentertainment.canary.playerstate.api.impl.WorldStateManager;
 import com.goodformentertainment.canary.playerstate.hook.WorldDeathHook;
 import com.goodformentertainment.canary.playerstate.hook.WorldEnterHook;
 import com.goodformentertainment.canary.playerstate.hook.WorldExitHook;
@@ -54,15 +54,15 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	
 	public static Logman LOG;
 	
-	private static IWorldManager worldManager;
+	private static final IWorldStateManager worldStateManager = new WorldStateManager();
 	
 	/**
 	 * Get the WorldManager from the PlayerStatePlugin.
 	 * 
 	 * @return The WorldManager.
 	 */
-	public static IWorldManager getWorldManager() {
-		return worldManager;
+	public static IWorldStateManager getWorldManager() {
+		return worldStateManager;
 	}
 	
 	private PlayerStateConfiguration config;
@@ -98,8 +98,6 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 		} catch (final IOException e) {
 			LOG.warn("Failed to create the default configuration file.", e);
 		}
-		
-		worldManager = new WorldManager();
 		
 		manager = new PlayerStateManager(this);
 		command = new PlayerStateCommand(manager);
@@ -201,40 +199,25 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	public void onDeath(final PlayerDeathHook hook) {
 		final Player player = hook.getPlayer();
 		deadPlayers.put(player.getUUIDString(), player.getLocation());
-		// LOG.info("DIED: " + player.getLocation());
+		
+		LOG.debug("Player " + player.getName() + " died at: " + player.getLocation());
 	}
-	
-	// @HookHandler
-	// public void onRespawned(final PlayerRespawnedHook hook) {
-	// final Player player = hook.getPlayer();
-	// final String uuid = player.getUUIDString();
-	//
-	// LOG.info("RESPAWNED");
-	// LOG.info("  BEDSPAWN: " + isBedRespawn(hook.getLocation()));
-	// LOG.info("  DEAD: " + deadPlayers.containsKey(uuid));
-	//
-	// // if (config.exactSpawn()) {
-	// // if (!isBedRespawn(player)) {
-	// // player.teleportTo(player.getLocation().getWorld().getSpawnLocation());
-	// // }
-	// // }
-	// //
-	// // if (exitingPlayers.containsKey(uuid)) {
-	// // final WorldEnterHook worldEnter = new WorldEnterHook(exitingPlayers.remove(uuid));
-	// // worldEnter.call();
-	// // }
-	// }
 	
 	@HookHandler
 	public void onRespawned(final PlayerRespawnedHook hook) {
 		final Player player = hook.getPlayer();
 		final String uuid = player.getUUIDString();
 		
-		// LOG.info("RESPAWNED: " + hook.getLocation());
+		LOG.info("Player " + player.getName() + " respawned at: " + hook.getLocation());
 		
 		if (exitingPlayers.containsKey(uuid)) {
 			final WorldEnterHook worldEnter = new WorldEnterHook(exitingPlayers.remove(uuid));
-			worldEnter.call();
+			if (worldEnter.getWorld() == player.getWorld()) {
+				worldEnter.call();
+			} else {
+				LOG.error("Player " + player.getName() + " is not in the expected world "
+						+ worldEnter.getWorld().getName());
+			}
 		}
 		
 		final Location finalLoc = finalLocations.remove(uuid);
@@ -250,12 +233,12 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	
 	@HookHandler
 	public void onTeleport(final TeleportHook hook) {
-		// LOG.info("TELEPORT " + hook.getTeleportReason());
-		
 		final Player player = hook.getPlayer();
 		final String uuid = player.getUUIDString();
 		final Location curLoc = hook.getCurrentLocation();
 		final Location destination = hook.getDestination();
+		
+		LOG.debug("Player " + player.getName() + " teleported from " + curLoc + " to " + destination);
 		
 		switch (hook.getTeleportReason()) {
 			case BED:
@@ -281,11 +264,11 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 				// LOG.info("  CURLOC == DEST");
 				// }
 				if (connectingPlayers.remove(uuid)) {
-					// LOG.info("  CONNECTING");
+					LOG.debug("  CONNECTING");
 				} else if (exitingPlayers.containsKey(uuid)) {
-					// LOG.info("  EXITING");
+					LOG.debug("  EXITING");
 				} else if (deadPlayers.containsKey(uuid)) {
-					// LOG.info("  ISDEAD");
+					LOG.debug("  ISDEAD");
 					
 					final Location deadLoc = deadPlayers.remove(uuid);
 					final Location spawnLoc = destination;
@@ -293,16 +276,16 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 					final WorldDeathHook worldDeath = new WorldDeathHook(player, deadLoc, spawnLoc);
 					worldDeath.call();
 					if (!spawnLoc.equals(worldDeath.getSpawnLocation())) {
-						// LOG.info("  OVERRIDESPAWN");
+						LOG.debug("  OVERRIDESPAWN");
 						finalLocations.put(uuid, worldDeath.getSpawnLocation());
 					}
 					
 					if (isBedRespawn(spawnLoc)) {
-						// LOG.info("  GOTOBED");
+						LOG.debug("  GOTOBED");
 						
 						final Location bedLoc = player.getSpawnPosition();
 						if (spawnLoc.getWorld().getBlockAt(bedLoc).getType() == BlockType.Bed) {
-							// LOG.info("    PRESENT");
+							LOG.debug("    PRESENT");
 							
 							if (!deadLoc.getWorld().equals(spawnLoc.getWorld())) {
 								final WorldExitHook worldExit = new WorldExitHook(player, deadLoc.getWorld(),
@@ -311,7 +294,7 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 								exitingPlayers.put(uuid, worldExit);
 							}
 						} else {
-							// LOG.info("    MISSING");
+							LOG.debug("    MISSING");
 							
 							if (!deadLoc.getWorld().equals(spawnLoc.getWorld())) {
 								final WorldExitHook worldExit = new WorldExitHook(player, deadLoc.getWorld(),
@@ -328,7 +311,7 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 						// LOG.info("  DESTINATION: " + destination);
 						// LOG.info("  SPAWN: " + player.getSpawnPosition());
 					} else {
-						// LOG.info("  GOTOSPAWN");
+						LOG.debug("  GOTOSPAWN");
 						
 						if (!deadLoc.getWorld().equals(spawnLoc.getWorld())) {
 							final WorldExitHook worldExit = new WorldExitHook(player, deadLoc.getWorld(),
@@ -352,13 +335,6 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 				break;
 		}
 	}
-	
-	// TODO: For testing only
-	// @HookHandler
-	// public void onWorldDeath(final WorldDeathHook hook) {
-	// final Location newLoc = Canary.getServer().getDefaultWorld().getSpawnLocation();
-	// hook.setSpawnLocation(newLoc);
-	// }
 	
 	@HookHandler
 	public void onWorldEnter(final WorldEnterHook hook) throws DatabaseReadException,
@@ -431,7 +407,7 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	}
 	
 	private String getState(final World world) {
-		String state = worldManager.getManagedWorldState(world);
+		String state = worldStateManager.getManagedWorldState(world);
 		if (state == null) {
 			state = config.getState(world);
 		}
@@ -439,7 +415,7 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	}
 	
 	private SaveState[] getSaves(final String state) {
-		SaveState[] saves = worldManager.getManagedStateSaves(state);
+		SaveState[] saves = worldStateManager.getManagedStateSaves(state);
 		if (saves == null) {
 			saves = config.getSaves(state);
 		}
