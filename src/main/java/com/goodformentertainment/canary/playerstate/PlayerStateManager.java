@@ -1,4 +1,4 @@
-package com.eharrison.canary.playerstate;
+package com.goodformentertainment.canary.playerstate;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -30,7 +30,7 @@ import net.canarymod.database.exceptions.DatabaseReadException;
 import net.canarymod.database.exceptions.DatabaseWriteException;
 import net.visualillusionsent.utils.TaskManager;
 
-import com.eharrison.canary.playerstate.PlayerState.Save;
+import com.goodformentertainment.canary.playerstate.PlayerState.Save;
 
 public class PlayerStateManager {
 	private static final PotionFactory POTION_FACTORY = Canary.factory().getPotionFactory();

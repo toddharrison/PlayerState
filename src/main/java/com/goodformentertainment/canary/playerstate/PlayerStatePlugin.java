@@ -1,4 +1,4 @@
-package com.eharrison.canary.playerstate;
+package com.goodformentertainment.canary.playerstate;
 
 import java.io.File;
 import java.io.IOException;
@@ -33,11 +33,11 @@ import net.canarymod.plugin.PluginListener;
 import net.canarymod.tasks.ServerTask;
 import net.visualillusionsent.utils.TaskManager;
 
-import com.eharrison.canary.playerstate.PlayerState.Save;
-import com.eharrison.canary.playerstate.hook.WorldDeathHook;
-import com.eharrison.canary.playerstate.hook.WorldEnterHook;
-import com.eharrison.canary.playerstate.hook.WorldExitHook;
-import com.eharrison.canary.util.JarUtil;
+import com.goodformentertainment.canary.playerstate.PlayerState.Save;
+import com.goodformentertainment.canary.playerstate.hook.WorldDeathHook;
+import com.goodformentertainment.canary.playerstate.hook.WorldEnterHook;
+import com.goodformentertainment.canary.playerstate.hook.WorldExitHook;
+import com.goodformentertainment.canary.util.JarUtil;
 
 public class PlayerStatePlugin extends Plugin implements PluginListener {
 	private static final int MULTIPLAYER_SPAWN_RADIUS = 16;

@@ -1,4 +1,4 @@
-package com.eharrison.canary.playerstate;
+package com.goodformentertainment.canary.playerstate;
 
 import java.util.HashMap;
 import java.util.Map;

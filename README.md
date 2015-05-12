@@ -1,6 +1,6 @@
 PlayerState
 ===========
-v0.2.2
+v0.2.3
 
 PlayerState is a simple plugin which will save and load player state within Minecraft. For instance, a server with a survival and creative world using PlayerState can prevent players from carrying items from creative into the survival world. It is built against the latest 1.2 snapshot of [canarymod](http://www.canarymod.net/) and supports Minecraft 1.8.
 
@@ -143,7 +143,7 @@ PlayerState offers new hooks that can be used to determine when a player enters 
 The maven dependency looks like this, but I don't have a hosting repository just yet:
 
     <dependency>
-      <groupId>com.eharrison.canary</groupId>
+      <groupId>com.goodformentertainment.canary</groupId>
       <artifactId>player-state</artifactId>
       <version>0.2.2</version>
       <scope>provided</scope>

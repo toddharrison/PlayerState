@@ -1,4 +1,4 @@
-package com.eharrison.canary.playerstate.hook;
+package com.goodformentertainment.canary.playerstate.hook;
 
 import net.canarymod.api.entity.living.humanoid.Player;
 import net.canarymod.api.world.World;

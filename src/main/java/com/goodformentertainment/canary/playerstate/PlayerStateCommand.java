@@ -1,4 +1,4 @@
-package com.eharrison.canary.playerstate;
+package com.goodformentertainment.canary.playerstate;
 
 import net.canarymod.Canary;
 import net.canarymod.api.entity.living.humanoid.Player;
@@ -8,7 +8,7 @@ import net.canarymod.commandsys.CommandListener;
 import net.canarymod.database.exceptions.DatabaseReadException;
 import net.canarymod.database.exceptions.DatabaseWriteException;
 
-import com.eharrison.canary.playerstate.PlayerState.Save;
+import com.goodformentertainment.canary.playerstate.PlayerState.Save;
 
 public class PlayerStateCommand implements CommandListener {
 	private static final Save[] saves = new Save[] {

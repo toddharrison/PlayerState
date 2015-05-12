@@ -1,4 +1,4 @@
-package com.eharrison.canary.util;
+package com.goodformentertainment.canary.util;
 
 import java.io.File;
 import java.io.FileOutputStream;
