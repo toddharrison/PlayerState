@@ -30,7 +30,7 @@ import net.canarymod.database.exceptions.DatabaseReadException;
 import net.canarymod.database.exceptions.DatabaseWriteException;
 import net.visualillusionsent.utils.TaskManager;
 
-import com.goodformentertainment.canary.playerstate.PlayerState.Save;
+import com.goodformentertainment.canary.playerstate.api.SaveState;
 
 public class PlayerStateManager {
 	private static final PotionFactory POTION_FACTORY = Canary.factory().getPotionFactory();
@@ -71,7 +71,7 @@ public class PlayerStateManager {
 		}
 	}
 	
-	public void savePlayerState(final Player player, final String state, final Save[] saves)
+	public void savePlayerState(final Player player, final String state, final SaveState[] saves)
 			throws DatabaseWriteException {
 		Map<String, PlayerDao> playerStateMap = states.get(player.getUUIDString());
 		if (playerStateMap == null) {
@@ -92,7 +92,7 @@ public class PlayerStateManager {
 			// final int invunerable = player.getInvulnerabilityTicks();
 			// final int level = player.getLevel();
 			
-			for (final Save save : saves) {
+			for (final SaveState save : saves) {
 				switch (save) {
 					case ACHIEVEMENTS:
 						playerDao.achievements = serializeAchievements(player);
@@ -135,7 +135,7 @@ public class PlayerStateManager {
 		PlayerStatePlugin.LOG.info("Saved " + player.getDisplayName() + " at state " + state);
 	}
 	
-	public boolean loadPlayerState(final Player player, final String state, final Save[] saves)
+	public boolean loadPlayerState(final Player player, final String state, final SaveState[] saves)
 			throws DatabaseReadException {
 		boolean success = true;
 		Map<String, PlayerDao> playerStateMap = states.get(player.getUUIDString());
@@ -174,7 +174,7 @@ public class PlayerStateManager {
 		return Location.fromString(playerDao.location);
 	}
 	
-	private boolean loadPlayerState(final Player player, final String state, final Save[] saves,
+	private boolean loadPlayerState(final Player player, final String state, final SaveState[] saves,
 			final PlayerDao playerDao) {
 		boolean loaded = false;
 		if (playerDao != null) {
@@ -184,7 +184,7 @@ public class PlayerStateManager {
 			// player.setLevel(level);
 			// player.teleportTo(Location.fromString(playerDao.location));
 			
-			for (final Save save : saves) {
+			for (final SaveState save : saves) {
 				switch (save) {
 					case ACHIEVEMENTS:
 						restoreAchievements(playerDao.achievements, player);
@@ -225,11 +225,11 @@ public class PlayerStateManager {
 		return loaded;
 	}
 	
-	private void clearPlayerState(final Player player, final Save[] saves)
+	private void clearPlayerState(final Player player, final SaveState[] saves)
 			throws DatabaseReadException {
 		// player.setAge(0);
 		
-		for (final Save save : saves) {
+		for (final SaveState save : saves) {
 			switch (save) {
 				case ACHIEVEMENTS:
 					for (final Achievements achievements : Achievements.values()) {

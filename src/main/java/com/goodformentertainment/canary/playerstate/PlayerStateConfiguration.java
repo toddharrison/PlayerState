@@ -7,7 +7,8 @@ import net.canarymod.api.world.World;
 import net.canarymod.config.Configuration;
 import net.visualillusionsent.utils.PropertiesFile;
 
-import com.goodformentertainment.canary.playerstate.PlayerState.Save;
+import com.goodformentertainment.canary.playerstate.api.IWorldManager;
+import com.goodformentertainment.canary.playerstate.api.SaveState;
 
 public class PlayerStateConfiguration {
 	private final PropertiesFile cfg;
@@ -21,7 +22,7 @@ public class PlayerStateConfiguration {
 	}
 	
 	public String getDefaultState() {
-		return cfg.getString("state.global", PlayerState.ALL_WORLDS);
+		return cfg.getString("state.global", IWorldManager.ALL_WORLDS);
 	}
 	
 	public String getState(final World world) {
@@ -35,29 +36,38 @@ public class PlayerStateConfiguration {
 		return state;
 	}
 	
-	public Save[] getSaves(final String state) {
-		final List<Save> saves = new ArrayList<Save>();
-		if (cfg.getBoolean("save." + state + "." + PlayerState.Save.ACHIEVEMENTS, false)) {
-			saves.add(PlayerState.Save.ACHIEVEMENTS);
+	public SaveState[] getSaves(final String state) {
+		final List<SaveState> saves = new ArrayList<SaveState>();
+		if (cfg.getBoolean("save." + state + "." + SaveState.ACHIEVEMENTS, false)) {
+			saves.add(SaveState.ACHIEVEMENTS);
 		}
-		if (cfg.getBoolean("save." + state + "." + PlayerState.Save.CONDITIONS, true)) {
-			saves.add(PlayerState.Save.CONDITIONS);
+		if (cfg.getBoolean("save." + state + "." + SaveState.CONDITIONS, true)) {
+			saves.add(SaveState.CONDITIONS);
 		}
-		if (cfg.getBoolean("save." + state + "." + PlayerState.Save.GAMEMODE, true)) {
-			saves.add(PlayerState.Save.GAMEMODE);
+		if (cfg.getBoolean("save." + state + "." + SaveState.GAMEMODE, true)) {
+			saves.add(SaveState.GAMEMODE);
 		}
-		if (cfg.getBoolean("save." + state + "." + PlayerState.Save.INVENTORY, true)) {
-			saves.add(PlayerState.Save.INVENTORY);
+		if (cfg.getBoolean("save." + state + "." + SaveState.INVENTORY, true)) {
+			saves.add(SaveState.INVENTORY);
 		}
-		if (cfg.getBoolean("save." + state + "." + PlayerState.Save.LOCATIONS, true)) {
-			saves.add(PlayerState.Save.LOCATIONS);
+		if (cfg.getBoolean("save." + state + "." + SaveState.LOCATIONS, true)) {
+			saves.add(SaveState.LOCATIONS);
 		}
-		if (cfg.getBoolean("save." + state + "." + PlayerState.Save.PREFIX, false)) {
-			saves.add(PlayerState.Save.PREFIX);
+		if (cfg.getBoolean("save." + state + "." + SaveState.PREFIX, false)) {
+			saves.add(SaveState.PREFIX);
 		}
-		if (cfg.getBoolean("save." + state + "." + PlayerState.Save.STATISTICS, false)) {
-			saves.add(PlayerState.Save.STATISTICS);
+		if (cfg.getBoolean("save." + state + "." + SaveState.STATISTICS, false)) {
+			saves.add(SaveState.STATISTICS);
 		}
-		return saves.toArray(new Save[saves.size()]);
+		return saves.toArray(new SaveState[saves.size()]);
+	}
+	
+	public String getLoggingLevel() {
+		String level = null;
+		final String key = "log.level";
+		if (cfg.containsKey(key)) {
+			level = cfg.getString(key);
+		}
+		return level;
 	}
 }

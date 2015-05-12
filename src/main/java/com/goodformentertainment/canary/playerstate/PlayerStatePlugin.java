@@ -33,7 +33,15 @@ import net.canarymod.plugin.PluginListener;
 import net.canarymod.tasks.ServerTask;
 import net.visualillusionsent.utils.TaskManager;
 
-import com.goodformentertainment.canary.playerstate.PlayerState.Save;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.config.Configuration;
+import org.apache.logging.log4j.core.config.LoggerConfig;
+
+import com.goodformentertainment.canary.playerstate.api.IWorldManager;
+import com.goodformentertainment.canary.playerstate.api.SaveState;
+import com.goodformentertainment.canary.playerstate.api.impl.WorldManager;
 import com.goodformentertainment.canary.playerstate.hook.WorldDeathHook;
 import com.goodformentertainment.canary.playerstate.hook.WorldEnterHook;
 import com.goodformentertainment.canary.playerstate.hook.WorldExitHook;
@@ -46,17 +54,39 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	
 	public static Logman LOG;
 	
-	private final PlayerStateConfiguration config;
-	private final PlayerStateManager manager;
-	private final PlayerStateCommand command;
+	private static IWorldManager worldManager;
 	
-	private final Collection<String> connectingPlayers;
-	private final Map<String, WorldExitHook> exitingPlayers;
-	private final Map<String, Location> deadPlayers;
-	private final Map<String, Location> finalLocations;
+	/**
+	 * Get the WorldManager from the PlayerStatePlugin.
+	 * 
+	 * @return The WorldManager.
+	 */
+	public static IWorldManager getWorldManager() {
+		return worldManager;
+	}
+	
+	private PlayerStateConfiguration config;
+	private PlayerStateManager manager;
+	private PlayerStateCommand command;
+	
+	private Collection<String> connectingPlayers;
+	private Map<String, WorldExitHook> exitingPlayers;
+	private Map<String, Location> deadPlayers;
+	private Map<String, Location> finalLocations;
 	
 	public PlayerStatePlugin() {
 		PlayerStatePlugin.LOG = getLogman();
+	}
+	
+	@Override
+	public boolean enable() {
+		boolean success = true;
+		
+		config = new PlayerStateConfiguration(this);
+		setLoggingLevel(config.getLoggingLevel());
+		
+		LOG.info("Enabling " + getName() + " Version " + getVersion());
+		LOG.info("Authored by " + getAuthor());
 		
 		connectingPlayers = Collections.synchronizedCollection(new HashSet<String>());
 		exitingPlayers = Collections.synchronizedMap(new HashMap<String, WorldExitHook>());
@@ -69,17 +99,10 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 			LOG.warn("Failed to create the default configuration file.", e);
 		}
 		
-		config = new PlayerStateConfiguration(this);
+		worldManager = new WorldManager();
+		
 		manager = new PlayerStateManager(this);
 		command = new PlayerStateCommand(manager);
-	}
-	
-	@Override
-	public boolean enable() {
-		boolean success = true;
-		
-		LOG.info("Enabling " + getName() + " Version " + getVersion());
-		LOG.info("Authored by " + getAuthor());
 		
 		manager.start();
 		
@@ -102,6 +125,15 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 		Canary.commands().unregisterCommands(this);
 		Canary.hooks().unregisterPluginListeners(this);
 		manager.stop();
+		
+		config = null;
+		manager = null;
+		command = null;
+		
+		connectingPlayers = null;
+		exitingPlayers = null;
+		deadPlayers = null;
+		finalLocations = null;
 	}
 	
 	@HookHandler
@@ -399,15 +431,15 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	}
 	
 	private String getState(final World world) {
-		String state = PlayerState.managedWorldStates.get(world.getName());
+		String state = worldManager.getManagedWorldState(world);
 		if (state == null) {
 			state = config.getState(world);
 		}
 		return state;
 	}
 	
-	private Save[] getSaves(final String state) {
-		Save[] saves = PlayerState.managedStateSaves.get(state);
+	private SaveState[] getSaves(final String state) {
+		SaveState[] saves = worldManager.getManagedStateSaves(state);
 		if (saves == null) {
 			saves = config.getSaves(state);
 		}
@@ -434,4 +466,14 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	// loc.getWorld().loadChunk(loc);
 	// }
 	// }
+	
+	private void setLoggingLevel(final String level) {
+		if (level != null) {
+			final LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
+			final Configuration config = ctx.getConfiguration();
+			final LoggerConfig loggerConfig = config.getLoggerConfig(LOG.getName());
+			loggerConfig.setLevel(Level.toLevel(level));
+			ctx.updateLoggers();
+		}
+	}
 }

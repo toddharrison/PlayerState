@@ -8,11 +8,11 @@ import net.canarymod.commandsys.CommandListener;
 import net.canarymod.database.exceptions.DatabaseReadException;
 import net.canarymod.database.exceptions.DatabaseWriteException;
 
-import com.goodformentertainment.canary.playerstate.PlayerState.Save;
+import com.goodformentertainment.canary.playerstate.api.SaveState;
 
 public class PlayerStateCommand implements CommandListener {
-	private static final Save[] saves = new Save[] {
-			Save.CONDITIONS, Save.INVENTORY, Save.LOCATIONS
+	private static final SaveState[] saves = new SaveState[] {
+			SaveState.CONDITIONS, SaveState.INVENTORY, SaveState.LOCATIONS
 	};
 	
 	private final PlayerStateManager manager;
