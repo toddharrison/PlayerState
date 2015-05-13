@@ -168,17 +168,26 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	public void onCommand(final PlayerCommandHook hook) throws InterruptedException,
 			ExecutionException {
 		final String[] command = hook.getCommand();
-		if (command[0].equals("/spawn")) {
+		if (command[0].equalsIgnoreCase("/spawn")) {
 			hook.setCanceled();
 			
+			// Do not allow spawn command to nether dimension
 			final Player player = hook.getPlayer();
-			World world = player.getWorld();
-			if (command.length > 1) {
-				world = Canary.getServer().getWorld(command[1]);
+			if (command[command.length - 1].matches(".*(?i)(NETHER)$")) {
+				player.message(ChatFormat.RED + "Spawning to the nether is verboten.");
+			} else {
+				World world = player.getWorld();
+				if (command.length > 1) {
+					world = Canary.getServer().getWorld(command[1]);
+				}
+				if (world == null) {
+					player.message(ChatFormat.RED + "Invalid world specified.");
+				} else {
+					final Location spawn = world.getSpawnLocation();
+					delayedTeleport(player, spawn, ChatFormat.YELLOW + "Teleported to spawn");
+				}
 			}
-			final Location spawn = world.getSpawnLocation();
-			delayedTeleport(player, spawn, ChatFormat.YELLOW + "Teleported to spawn");
-		} else if (command[0].equals("/home")) {
+		} else if (command[0].equalsIgnoreCase("/home")) {
 			hook.setCanceled();
 			
 			final Player player = hook.getPlayer();
@@ -189,7 +198,7 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 			// TODO handle offline players
 			final Location loc = targetPlayer.getHome();
 			delayedTeleport(player, loc, ChatFormat.RED + "Going home");
-		} else if (command[0].equals("/tp")) {
+		} else if (command[0].equalsIgnoreCase("/tp")) {
 			// TODO: Don't display the message until after success?
 			// foo(player, loc, "Teleported " + targetPlayer.getName() + " to " + loc);
 		}
