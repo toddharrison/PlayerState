@@ -39,8 +39,10 @@ import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.LoggerConfig;
 
+import com.goodformentertainment.canary.playerstate.api.IPlayerStateManager;
 import com.goodformentertainment.canary.playerstate.api.IWorldStateManager;
 import com.goodformentertainment.canary.playerstate.api.SaveState;
+import com.goodformentertainment.canary.playerstate.api.impl.PlayerStateManager;
 import com.goodformentertainment.canary.playerstate.api.impl.WorldStateManager;
 import com.goodformentertainment.canary.playerstate.hook.WorldDeathHook;
 import com.goodformentertainment.canary.playerstate.hook.WorldEnterHook;
@@ -55,18 +57,27 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	public static Logman LOG;
 	
 	private static final IWorldStateManager worldStateManager = new WorldStateManager();
+	private static final IPlayerStateManager manager = new PlayerStateManager();
 	
 	/**
-	 * Get the WorldManager from the PlayerStatePlugin.
+	 * Get the WorldStateManager from the PlayerStatePlugin.
 	 * 
-	 * @return The WorldManager.
+	 * @return The WorldStateManager.
 	 */
 	public static IWorldStateManager getWorldManager() {
 		return worldStateManager;
 	}
 	
+	/**
+	 * Get the PlayerStateManager from the PlayerStatePlugin.
+	 * 
+	 * @return The PlayerStateManager.
+	 */
+	public static IPlayerStateManager getPlayerManager() {
+		return manager;
+	}
+	
 	private PlayerStateConfiguration config;
-	private PlayerStateManager manager;
 	private PlayerStateCommand command;
 	
 	private Collection<String> connectingPlayers;
@@ -99,10 +110,9 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 			LOG.warn("Failed to create the default configuration file.", e);
 		}
 		
-		manager = new PlayerStateManager(this);
 		command = new PlayerStateCommand(manager);
 		
-		manager.start();
+		manager.startSaveThread();
 		
 		Canary.hooks().registerListener(this, this);
 		
@@ -122,10 +132,9 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 		
 		Canary.commands().unregisterCommands(this);
 		Canary.hooks().unregisterPluginListeners(this);
-		manager.stop();
+		manager.stopSaveThread();
 		
 		config = null;
-		manager = null;
 		command = null;
 		
 		connectingPlayers = null;

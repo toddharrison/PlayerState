@@ -8,6 +8,7 @@ import net.canarymod.commandsys.CommandListener;
 import net.canarymod.database.exceptions.DatabaseReadException;
 import net.canarymod.database.exceptions.DatabaseWriteException;
 
+import com.goodformentertainment.canary.playerstate.api.IPlayerStateManager;
 import com.goodformentertainment.canary.playerstate.api.SaveState;
 
 public class PlayerStateCommand implements CommandListener {
@@ -15,9 +16,9 @@ public class PlayerStateCommand implements CommandListener {
 			SaveState.CONDITIONS, SaveState.INVENTORY, SaveState.LOCATIONS
 	};
 	
-	private final PlayerStateManager manager;
+	private final IPlayerStateManager manager;
 	
-	public PlayerStateCommand(final PlayerStateManager manager) {
+	public PlayerStateCommand(final IPlayerStateManager manager) {
 		this.manager = manager;
 	}
 	
