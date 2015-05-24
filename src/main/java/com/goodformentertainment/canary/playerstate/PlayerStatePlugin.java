@@ -367,21 +367,25 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 		
 		player.message(ChatFormat.GRAY + "Entered world " + hook.getWorld().getName());
 		
-		if (!toState.equals(fromState)) {
-			if (manager.loadPlayerState(player, toState, getSaves(toState))) {
-				player.message(ChatFormat.GOLD + "Loaded state " + toState);
-			} else {
-				player.setSpawnPosition(toWorld.getSpawnLocation());
-				manager.savePlayerState(player, toState, getSaves(toState));
-				// manager.setPlayerSpawnLocation(player, toState, toWorld.getSpawnLocation());
-				player.message(ChatFormat.GOLD + "Entering state " + toState);
-			}
+		if (fromState == null) {
+			// Player login, don't load the player state
 		} else {
-			// Restore things lost during world transition, but not state (like gamemode)
-			// TODO fix
-			// final int gameMode = manager.getGameMode(player, toState);
-			// LOG.info("Restoring game mode to " + gameMode);
-			// player.setModeId(gameMode);
+			if (!toState.equals(fromState)) {
+				if (manager.loadPlayerState(player, toState, getSaves(toState))) {
+					player.message(ChatFormat.GOLD + "Loaded state " + toState);
+				} else {
+					player.setSpawnPosition(toWorld.getSpawnLocation());
+					manager.savePlayerState(player, toState, getSaves(toState));
+					// manager.setPlayerSpawnLocation(player, toState, toWorld.getSpawnLocation());
+					player.message(ChatFormat.GOLD + "Entering state " + toState);
+				}
+			} else {
+				// Restore things lost during world transition, but not state (like gamemode)
+				// TODO fix
+				// final int gameMode = manager.getGameMode(player, toState);
+				// LOG.info("Restoring game mode to " + gameMode);
+				// player.setModeId(gameMode);
+			}
 		}
 	}
 	
