@@ -93,6 +93,12 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 	public boolean enable() {
 		boolean success = true;
 		
+		try {
+			JarUtil.exportResource(this, "PlayerState.cfg", new File("config/PlayerState"));
+		} catch (final IOException e) {
+			LOG.warn("Failed to create the default configuration file.", e);
+		}
+		
 		config = new PlayerStateConfiguration(this);
 		setLoggingLevel(config.getLoggingLevel());
 		
@@ -103,12 +109,6 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 		exitingPlayers = Collections.synchronizedMap(new HashMap<String, WorldExitHook>());
 		deadPlayers = Collections.synchronizedMap(new HashMap<String, Location>());
 		finalLocations = Collections.synchronizedMap(new HashMap<String, Location>());
-		
-		try {
-			JarUtil.exportResource(this, "PlayerState.cfg", new File("config/PlayerState"));
-		} catch (final IOException e) {
-			LOG.warn("Failed to create the default configuration file.", e);
-		}
 		
 		command = new PlayerStateCommand(manager);
 		
