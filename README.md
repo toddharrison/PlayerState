@@ -20,6 +20,17 @@ This plugin can save player state information like:
 
 ## New
 
+### 0.2.3
+
+* Moved API packages into goodformentertainment.com
+* Added configurable logging level, defaults to INFO
+* Corrected plugin enable and disable
+* Added check to ensure you are in the right world before changing state
+  * Prevents players from losing inventory if the state gets confused if hooks not executed
+* Added restriction disallowing players from using /spawn to go to the nether
+* Commands are now case insensitive
+* No longer overwrite the player state when connecting the first time
+
 ### 0.2.2
 
 * Refactored to match baseline changes in Canary to dramatically simplify code.
