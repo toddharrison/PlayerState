@@ -1,0 +1,68 @@
+apply plugin: 'java'
+apply plugin: 'eclipse'
+
+group = 'com.goodformentertainment.canary'
+version = '1.0.0'
+
+archivesBaseName = 'player-state'
+compileJava.options.encoding = 'UTF-8'
+sourceCompatibility = 1.6
+targetCompatibility = 1.6
+
+jar {
+    manifest {
+        attributes 'Created-By': 'Gradle',
+				   'Implementation-Title': project.name,
+                   'Implementation-Version': version
+    }
+}
+
+repositories {
+    mavenCentral()
+	
+	maven {
+		url 'http://repo.visualillusionsent.net/repository/public/'
+	}
+	
+	maven {
+		url 'file:///Users/todd/.m2/repository'
+	}
+}
+
+dependencies {
+	compile group: 'net.canarymod', name: 'CanaryLib', version: '1.2.1-SNAPSHOT', changing: true
+	testCompile group: 'junit', name: 'junit', version: '4.+'
+}
+
+task canary(dependsOn: 'build') << {
+	copy {
+		from jar.archivePath
+		into "$canaryHome/plugins"
+	}
+	println "Copied $project.name into $canaryHome"
+}
+
+task canaryDeploy(dependsOn: 'build') {
+	doFirst {
+		// clean canary
+		ant.delete (includeEmptyDirs: 'true') {
+			fileset(dir: file("$canaryHome/plugins"), includes: 'player-state-*.jar')
+		}
+		println 'Deleted plugin'
+		delete "$canaryHome/config/PlayerState"
+		println 'Deleted config'
+		ant.delete (includeEmptyDirs: 'true') {
+			fileset(dir: file("$canaryHome/db"), includes: 'playerstate_*.xml')
+		}
+		println 'Deleted DB'
+		delete "$canaryHome/worlds/players"
+		println 'Deleted player data'
+	}
+	doLast {
+		copy {
+			from jar.archivePath
+			into "$canaryHome/plugins"
+		}
+		println "Copied $project.name into $canaryHome"
+	}
+}

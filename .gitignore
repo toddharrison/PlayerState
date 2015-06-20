@@ -1,1 +1,5 @@
-/target/
+target/
+.gradle
+build/
+gradle.properties
+
