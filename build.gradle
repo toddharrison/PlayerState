@@ -2,7 +2,7 @@ apply plugin: 'java'
 apply plugin: 'eclipse'
 
 group = 'com.goodformentertainment.canary'
-version = '1.0.0'
+version = '1.0.1'
 
 archivesBaseName = 'player-state'
 compileJava.options.encoding = 'UTF-8'
