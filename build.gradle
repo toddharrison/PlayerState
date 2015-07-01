@@ -1,5 +1,8 @@
+// Set a property canaryHome pointing to the root of the canary test server
+
 apply plugin: 'java'
 apply plugin: 'eclipse'
+apply plugin: 'maven'
 
 group = 'com.goodformentertainment.canary'
 version = '1.0.1'
@@ -12,57 +15,54 @@ targetCompatibility = 1.6
 jar {
     manifest {
         attributes 'Created-By': 'Gradle',
-				   'Implementation-Title': project.name,
+                   'Implementation-Title': project.name,
                    'Implementation-Version': version
     }
 }
 
 repositories {
     mavenCentral()
-	
-	maven {
-		url 'http://repo.visualillusionsent.net/repository/public/'
-	}
-	
-	maven {
-		url 'file:///Users/todd/.m2/repository'
-	}
+    mavenLocal()
+
+    maven {
+        url 'http://repo.visualillusionsent.net/repository/public/'
+    }
 }
 
 dependencies {
-	compile group: 'net.canarymod', name: 'CanaryLib', version: '1.2.1-SNAPSHOT', changing: true
-	testCompile group: 'junit', name: 'junit', version: '4.+'
+    compile group: 'net.canarymod', name: 'CanaryLib', version: '1.2.1-SNAPSHOT', changing: true
+    testCompile group: 'junit', name: 'junit', version: '4.+'
 }
 
 task canary(dependsOn: 'build') << {
-	copy {
-		from jar.archivePath
-		into "$canaryHome/plugins"
-	}
-	println "Copied $project.name into $canaryHome"
+    copy {
+        from jar.archivePath
+        into "$canaryHome/plugins"
+    }
+    println "Copied $project.name into $canaryHome"
 }
 
 task canaryDeploy(dependsOn: 'build') {
-	doFirst {
-		// clean canary
-		ant.delete (includeEmptyDirs: 'true') {
-			fileset(dir: file("$canaryHome/plugins"), includes: 'player-state-*.jar')
-		}
-		println 'Deleted plugin'
-		delete "$canaryHome/config/PlayerState"
-		println 'Deleted config'
-		ant.delete (includeEmptyDirs: 'true') {
-			fileset(dir: file("$canaryHome/db"), includes: 'playerstate_*.xml')
-		}
-		println 'Deleted DB'
-		delete "$canaryHome/worlds/players"
-		println 'Deleted player data'
-	}
-	doLast {
-		copy {
-			from jar.archivePath
-			into "$canaryHome/plugins"
-		}
-		println "Copied $project.name into $canaryHome"
-	}
+    doFirst {
+        // clean canary
+        ant.delete (includeEmptyDirs: 'true') {
+            fileset(dir: file("$canaryHome/plugins"), includes: 'player-state-*.jar')
+        }
+        println 'Deleted plugin'
+        delete "$canaryHome/config/PlayerState"
+        println 'Deleted config'
+        ant.delete (includeEmptyDirs: 'true') {
+            fileset(dir: file("$canaryHome/db"), includes: 'playerstate_*.xml')
+        }
+        println 'Deleted DB'
+        delete "$canaryHome/worlds/players"
+        println 'Deleted player data'
+    }
+    doLast {
+        copy {
+            from jar.archivePath
+            into "$canaryHome/plugins"
+        }
+        println "Copied $project.name into $canaryHome"
+    }
 }
