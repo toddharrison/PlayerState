@@ -5,3 +5,7 @@ build/
 gradle.properties
 PlayerState.iml
 
+.classpath
+.project
+.settings/
+
