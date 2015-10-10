@@ -7,7 +7,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.logging.log4j.Level;
@@ -37,7 +36,6 @@ import net.canarymod.commandsys.CommandDependencyException;
 import net.canarymod.database.exceptions.DatabaseReadException;
 import net.canarymod.database.exceptions.DatabaseWriteException;
 import net.canarymod.hook.HookHandler;
-import net.canarymod.hook.command.PlayerCommandHook;
 import net.canarymod.hook.player.ConnectionHook;
 import net.canarymod.hook.player.DisconnectionHook;
 import net.canarymod.hook.player.PlayerDeathHook;
@@ -171,50 +169,6 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
         // manager.savePlayerState(player, state, getSaves(state));
 
         new WorldExitHook(player, world, fromLoc, null).call();
-    }
-
-    @HookHandler
-    public void onCommand(final PlayerCommandHook hook)
-            throws InterruptedException, ExecutionException {
-        final String[] command = hook.getCommand();
-        if (command[0].equalsIgnoreCase("/spawn")) {
-            hook.setCanceled();
-
-            final Player player = hook.getPlayer();
-            final World world = player.getWorld();
-            final Location spawn = world.getSpawnLocation();
-            delayedTeleport(player, spawn, ChatFormat.YELLOW + "Teleported to spawn");
-
-            // // Do not allow spawn command to nether dimension
-            // final Player player = hook.getPlayer();
-            // if (command[command.length - 1].matches(".*(?i)(NETHER)$")) {
-            // player.message(ChatFormat.RED + "Spawning to the nether is verboten.");
-            // } else {
-            // World world = player.getWorld();
-            // if (command.length > 1) {
-            // world = Canary.getServer().getWorld(command[1]);
-            // }
-            // if (world == null) {
-            // player.message(ChatFormat.RED + "Invalid world specified.");
-            // } else {
-            // final Location spawn = world.getSpawnLocation();
-            // delayedTeleport(player, spawn, ChatFormat.YELLOW + "Teleported to spawn");
-            // }
-            // }
-        } else if (command[0].equalsIgnoreCase("/home")) {
-            hook.setCanceled();
-
-            final Player player = hook.getPlayer();
-            Player targetPlayer = player;
-            if (command.length > 1) {
-                targetPlayer = Canary.getServer().getPlayer(command[1]);
-            }
-            // TODO handle offline players
-            final Location loc = targetPlayer.getHome();
-            delayedTeleport(player, loc, ChatFormat.RED + "Going home");
-            // } else if (command[0].equalsIgnoreCase("/tp")) {
-            // // foo(player, loc, "Teleported " + targetPlayer.getName() + " to " + loc);
-        }
     }
 
     @HookHandler
@@ -456,13 +410,6 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 
         return isBedRespawn;
     }
-
-    // private void preloadChunk(final Location loc) {
-    // final World world = loc.getWorld();
-    // if (!world.isChunkLoaded(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ())) {
-    // loc.getWorld().loadChunk(loc);
-    // }
-    // }
 
     private void setLoggingLevel(final String level) {
         if (level != null) {
