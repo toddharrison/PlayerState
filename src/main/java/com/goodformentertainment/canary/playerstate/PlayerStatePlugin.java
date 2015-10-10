@@ -1,5 +1,21 @@
 package com.goodformentertainment.canary.playerstate;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.config.Configuration;
+import org.apache.logging.log4j.core.config.LoggerConfig;
+
 import com.goodformentertainment.canary.playerstate.api.IPlayerStateManager;
 import com.goodformentertainment.canary.playerstate.api.IWorldStateManager;
 import com.goodformentertainment.canary.playerstate.api.SaveState;
@@ -9,6 +25,7 @@ import com.goodformentertainment.canary.playerstate.hook.WorldDeathHook;
 import com.goodformentertainment.canary.playerstate.hook.WorldEnterHook;
 import com.goodformentertainment.canary.playerstate.hook.WorldExitHook;
 import com.goodformentertainment.canary.util.JarUtil;
+
 import net.canarymod.Canary;
 import net.canarymod.api.entity.living.humanoid.Player;
 import net.canarymod.api.world.World;
@@ -31,21 +48,6 @@ import net.canarymod.plugin.Plugin;
 import net.canarymod.plugin.PluginListener;
 import net.canarymod.tasks.ServerTask;
 import net.visualillusionsent.utils.TaskManager;
-import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.core.LoggerContext;
-import org.apache.logging.log4j.core.config.Configuration;
-import org.apache.logging.log4j.core.config.LoggerConfig;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 
 public class PlayerStatePlugin extends Plugin implements PluginListener {
     private static final int MULTIPLAYER_SPAWN_RADIUS = 16;
@@ -142,8 +144,8 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
     }
 
     @HookHandler
-    public void onConnection(final ConnectionHook hook) throws DatabaseReadException,
-            DatabaseWriteException {
+    public void onConnection(final ConnectionHook hook)
+            throws DatabaseReadException, DatabaseWriteException {
         final Player player = hook.getPlayer();
         final World world = player.getWorld();
         final Location toLoc = player.getLocation();
@@ -172,28 +174,33 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
     }
 
     @HookHandler
-    public void onCommand(final PlayerCommandHook hook) throws InterruptedException,
-            ExecutionException {
+    public void onCommand(final PlayerCommandHook hook)
+            throws InterruptedException, ExecutionException {
         final String[] command = hook.getCommand();
         if (command[0].equalsIgnoreCase("/spawn")) {
             hook.setCanceled();
 
-            // Do not allow spawn command to nether dimension
             final Player player = hook.getPlayer();
-            if (command[command.length - 1].matches(".*(?i)(NETHER)$")) {
-                player.message(ChatFormat.RED + "Spawning to the nether is verboten.");
-            } else {
-                World world = player.getWorld();
-                if (command.length > 1) {
-                    world = Canary.getServer().getWorld(command[1]);
-                }
-                if (world == null) {
-                    player.message(ChatFormat.RED + "Invalid world specified.");
-                } else {
-                    final Location spawn = world.getSpawnLocation();
-                    delayedTeleport(player, spawn, ChatFormat.YELLOW + "Teleported to spawn");
-                }
-            }
+            final World world = player.getWorld();
+            final Location spawn = world.getSpawnLocation();
+            delayedTeleport(player, spawn, ChatFormat.YELLOW + "Teleported to spawn");
+
+            // // Do not allow spawn command to nether dimension
+            // final Player player = hook.getPlayer();
+            // if (command[command.length - 1].matches(".*(?i)(NETHER)$")) {
+            // player.message(ChatFormat.RED + "Spawning to the nether is verboten.");
+            // } else {
+            // World world = player.getWorld();
+            // if (command.length > 1) {
+            // world = Canary.getServer().getWorld(command[1]);
+            // }
+            // if (world == null) {
+            // player.message(ChatFormat.RED + "Invalid world specified.");
+            // } else {
+            // final Location spawn = world.getSpawnLocation();
+            // delayedTeleport(player, spawn, ChatFormat.YELLOW + "Teleported to spawn");
+            // }
+            // }
         } else if (command[0].equalsIgnoreCase("/home")) {
             hook.setCanceled();
 
@@ -205,8 +212,8 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
             // TODO handle offline players
             final Location loc = targetPlayer.getHome();
             delayedTeleport(player, loc, ChatFormat.RED + "Going home");
-//        } else if (command[0].equalsIgnoreCase("/tp")) {
-//            // foo(player, loc, "Teleported " + targetPlayer.getName() + " to " + loc);
+            // } else if (command[0].equalsIgnoreCase("/tp")) {
+            // // foo(player, loc, "Teleported " + targetPlayer.getName() + " to " + loc);
         }
     }
 
@@ -253,29 +260,30 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
         final Location curLoc = hook.getCurrentLocation();
         final Location destination = hook.getDestination();
 
-        LOG.debug("Player " + player.getName() + " teleported from " + curLoc + " to " + destination);
+        LOG.debug(
+                "Player " + player.getName() + " teleported from " + curLoc + " to " + destination);
 
         switch (hook.getTeleportReason()) {
             case BED:
             case MOUNT_CHANGE:
             case MOVEMENT:
-                // LOG.info("  CURLOC: " + curLoc);
-                // LOG.info("  DESTINATION: " + destination);
-                // LOG.info("  SPAWN: " + player.getSpawnPosition());
+                // LOG.info(" CURLOC: " + curLoc);
+                // LOG.info(" DESTINATION: " + destination);
+                // LOG.info(" SPAWN: " + player.getSpawnPosition());
                 break;
             case COMMAND:
             case PLUGIN:
             case WARP:
                 if (!curLoc.getWorld().equals(destination.getWorld())) {
-                    final WorldExitHook worldExit = new WorldExitHook(player, curLoc.getWorld(), curLoc,
-                            destination);
+                    final WorldExitHook worldExit = new WorldExitHook(player, curLoc.getWorld(),
+                            curLoc, destination);
                     worldExit.call();
                     exitingPlayers.put(uuid, worldExit);
                 }
                 break;
             case RESPAWN:
                 // if (curLoc.equals(destination)) {
-                // LOG.info("  CURLOC == DEST");
+                // LOG.info(" CURLOC == DEST");
                 // }
                 if (connectingPlayers.remove(uuid)) {
                     LOG.debug("  CONNECTING");
@@ -286,7 +294,8 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
 
                     final Location deadLoc = deadPlayers.remove(uuid);
 
-                    final WorldDeathHook worldDeath = new WorldDeathHook(player, deadLoc, destination);
+                    final WorldDeathHook worldDeath = new WorldDeathHook(player, deadLoc,
+                            destination);
                     worldDeath.call();
                     if (!destination.equals(worldDeath.getSpawnLocation())) {
                         LOG.debug("  OVERRIDESPAWN");
@@ -301,8 +310,8 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
                             LOG.debug("    PRESENT");
 
                             if (!deadLoc.getWorld().equals(destination.getWorld())) {
-                                final WorldExitHook worldExit = new WorldExitHook(player, deadLoc.getWorld(),
-                                        deadLoc, destination);
+                                final WorldExitHook worldExit = new WorldExitHook(player,
+                                        deadLoc.getWorld(), deadLoc, destination);
                                 worldExit.call();
                                 exitingPlayers.put(uuid, worldExit);
                             }
@@ -310,8 +319,9 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
                             LOG.debug("    MISSING");
 
                             if (!deadLoc.getWorld().equals(destination.getWorld())) {
-                                final WorldExitHook worldExit = new WorldExitHook(player, deadLoc.getWorld(),
-                                        deadLoc, destination.getWorld().getSpawnLocation());
+                                final WorldExitHook worldExit = new WorldExitHook(player,
+                                        deadLoc.getWorld(), deadLoc,
+                                        destination.getWorld().getSpawnLocation());
                                 worldExit.call();
                                 exitingPlayers.put(uuid, worldExit);
                             }
@@ -320,15 +330,16 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
                             player.teleportTo(destination.getWorld().getSpawnLocation());
                         }
 
-                        // LOG.info("  CURLOC: " + curLoc);
-                        // LOG.info("  DESTINATION: " + destination);
-                        // LOG.info("  SPAWN: " + player.getSpawnPosition());
+                        // LOG.info(" CURLOC: " + curLoc);
+                        // LOG.info(" DESTINATION: " + destination);
+                        // LOG.info(" SPAWN: " + player.getSpawnPosition());
                     } else {
                         LOG.debug("  GOTOSPAWN");
 
                         if (!deadLoc.getWorld().equals(destination.getWorld())) {
-                            final WorldExitHook worldExit = new WorldExitHook(player, deadLoc.getWorld(),
-                                    deadLoc, destination.getWorld().getSpawnLocation());
+                            final WorldExitHook worldExit = new WorldExitHook(player,
+                                    deadLoc.getWorld(), deadLoc,
+                                    destination.getWorld().getSpawnLocation());
                             worldExit.call();
                             exitingPlayers.put(uuid, worldExit);
                         }
@@ -342,16 +353,16 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
                 break;
             case PORTAL:
             case UNDEFINED:
-                // LOG.info("  CURLOC: " + curLoc);
-                // LOG.info("  DESTINATION: " + destination);
-                // LOG.info("  SPAWN: " + player.getSpawnPosition());
+                // LOG.info(" CURLOC: " + curLoc);
+                // LOG.info(" DESTINATION: " + destination);
+                // LOG.info(" SPAWN: " + player.getSpawnPosition());
                 break;
         }
     }
 
     @HookHandler
-    public void onWorldEnter(final WorldEnterHook hook) throws DatabaseReadException,
-            DatabaseWriteException {
+    public void onWorldEnter(final WorldEnterHook hook)
+            throws DatabaseReadException, DatabaseWriteException {
         final Player player = hook.getPlayer();
         final World toWorld = hook.getToLocation().getWorld();
         final String toState = getState(toWorld);
@@ -395,7 +406,7 @@ public class PlayerStatePlugin extends Plugin implements PluginListener {
     }
 
     private void delayedTeleport(final Player player, final Location destination,
-                                 final String successMessage) {
+            final String successMessage) {
         final Location curLoc = player.getLocation();
 
         player.message(ChatFormat.GOLD + "Stand still for " + TELEPORT_DELAY_SECONDS
